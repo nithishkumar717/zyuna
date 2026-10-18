@@ -37,7 +37,20 @@ import {
   AdminConfigUpdate
 } from "@/types/api";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const getBaseUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    // In browser on HTTPS (e.g. Vercel), if envUrl is HTTP or not provided,
+    // use same-origin /api/v1 so Next.js rewrites it without Mixed Content blocks.
+    if (!envUrl || (window.location.protocol === "https:" && envUrl.startsWith("http://"))) {
+      return "/api/v1";
+    }
+    return envUrl;
+  }
+  // Server-side (Vercel SSR / Node.js)
+  return process.env.BOT_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+};
+
 const API_KEY = process.env.NEXT_PUBLIC_DASHBOARD_API_KEY;
 
 class ApiError extends Error {
@@ -51,7 +64,9 @@ async function request<T>(
   endpoint: string,
   options: RequestInit & { next?: NextFetchRequestConfig } = {}
 ): Promise<T> {
-  const url = `${BASE_URL}${endpoint}`;
+  const baseUrl = getBaseUrl().replace(/\/+$/, "");
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = `${baseUrl}${cleanEndpoint}`;
   
   const headers = new Headers(options.headers);
   if (API_KEY) {
