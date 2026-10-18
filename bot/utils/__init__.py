@@ -9,7 +9,7 @@
 # ║            © 2026 Nerd X Live — All Rights Reserved             ║
 # ║                                                                  ║
 # ║   discord  ──  https://discord.gg/YzHCx5yQXv                    ║
-# ║   github   ──  https://github.com/nithishkumar717/yuna-bot      ║
+# ║   github   ──  https://github.com/nithishkumar717/zyuna         ║
 # ║                                                                  ║
 # ╚══════════════════════════════════════════════════════════════════╝
 

@@ -7,7 +7,7 @@
 # ║            © 2026 Nerd X Live — All Rights Reserved             ║
 # ║                                                                  ║
 # ║   discord  ──  https://discord.gg/YzHCx5yQXv                    ║
-# ║   github   ──  https://github.com/nithishkumar717/yuna-bot      ║
+# ║   github   ──  https://github.com/nithishkumar717/zyuna         ║
 # ║                                                                  ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
@@ -276,6 +276,71 @@ class Owner(commands.Cog):
     async def _restart(self, ctx: Context):
         await ctx.reply(f"{TICK} | **Successfully Restarting {BotName} It Takes 10 seconds**")
         restart_program()
+
+    @commands.command(name="gitpull", aliases=["update", "gitupdate", "pull"], help="Pulls latest updates from GitHub and restarts if updated.")
+    @commands.is_owner()
+    async def gitpull(self, ctx: Context, restart_after: Optional[str] = "yes"):
+        """Pull the latest code from GitHub repository."""
+        msg = await ctx.reply("⏳ | Checking for and pulling latest updates from GitHub...", mention_author=False)
+
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        repo_dir = None
+        check_paths = [
+            os.getcwd(),
+            current_dir,
+            os.path.dirname(current_dir),
+            os.path.dirname(os.path.dirname(current_dir)),
+            os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        ]
+        for path in check_paths:
+            if os.path.exists(os.path.join(path, ".git")):
+                repo_dir = path
+                break
+
+        if not repo_dir:
+            return await msg.edit(content="❌ | Could not locate `.git` repository folder.")
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "git", "pull", "origin", "main",
+                cwd=repo_dir,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            out = stdout.decode().strip()
+            err = stderr.decode().strip()
+
+            if process.returncode != 0:
+                embed = discord.Embed(
+                    title="Git Pull Failed",
+                    description=f"```\n{err or out or 'Unknown git error'}\n```",
+                    color=0xFF0000
+                )
+                return await msg.edit(content=None, embed=embed)
+
+            is_up_to_date = "Already up to date" in out or "Already up-to-date" in out
+            color = 0x3498db if is_up_to_date else 0x2ecc71
+            status_text = "Already up to date!" if is_up_to_date else "Successfully pulled updates from GitHub!"
+
+            embed = discord.Embed(
+                title=f"{TICK} Git Pull Result",
+                description=f"**Status:** {status_text}\n```\n{out[:1800]}\n```",
+                color=color
+            )
+            embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.display_avatar.url)
+
+            should_restart = restart_after.lower() in ("yes", "y", "true", "1", "restart", "r", "force")
+            if (not is_up_to_date and should_restart) or restart_after.lower() in ("force", "restart"):
+                embed.add_field(name="Restart", value=f"Restarting {BotName} in 3 seconds to apply updates...", inline=False)
+                await msg.edit(content=None, embed=embed)
+                await asyncio.sleep(3)
+                restart_program()
+            else:
+                await msg.edit(content=None, embed=embed)
+
+        except Exception as e:
+            await msg.edit(content=f"❌ | An error occurred while pulling updates: `{e}`")
 
     @commands.command(name="sync", help="Syncs all database.")
     @commands.is_owner()
@@ -829,5 +894,6 @@ class Badges(commands.Cog):
 async def setup(client):
     if not hasattr(client, 'session'):
         client.session = aiohttp.ClientSession()
+    await client.add_cog(Owner(client))
     await client.add_cog(Badges(client))
     

@@ -15,6 +15,45 @@ import discord
 from discord import Spotify
 from discord.ext import commands, tasks
 
+def _find_git_dir():
+    check_paths = [
+        os.getcwd(),
+        os.path.dirname(os.path.abspath(__file__)),
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ]
+    for path in check_paths:
+        if os.path.exists(os.path.join(path, ".git")):
+            return path
+    return None
+
+def _auto_git_pull():
+    """Automatically pulls the latest code from GitHub on startup."""
+    try:
+        git_dir = _find_git_dir()
+        if git_dir:
+            result = subprocess.run(
+                ["git", "pull", "origin", "main"],
+                cwd=git_dir,
+                capture_output=True,
+                text=True,
+                timeout=20
+            )
+            out = result.stdout.strip()
+            if result.returncode == 0:
+                if "Already up to date" in out or "Already up-to-date" in out:
+                    print("\033[36m◈ Auto-Update: Code is up to date.\033[0m")
+                else:
+                    print(f"\033[32m◈ Auto-Update: Pulled latest changes from GitHub:\n{out}\033[0m")
+            else:
+                err = result.stderr.strip()
+                print(f"\033[33m◈ Auto-Update note: Git pull exited with code {result.returncode}: {err or out}\033[0m")
+        else:
+            print("\033[33m◈ Auto-Update note: No .git directory found, skipping startup pull.\033[0m")
+    except Exception as e:
+        print(f"\033[33m◈ Auto-Update note: {e}\033[0m")
+
+_auto_git_pull()
+
 try:
     from core import Context, zyuna
 except ImportError:
@@ -72,6 +111,51 @@ async def update_stats():
         
         await asyncio.sleep(600) # Update every 10 minutes
 
+async def auto_git_update_task():
+    """A background task to periodically check and pull git updates every 10 minutes."""
+    await client.wait_until_ready()
+    # Wait 5 minutes after boot before first check
+    await asyncio.sleep(300)
+    while not client.is_closed():
+        try:
+            git_dir = _find_git_dir()
+            if git_dir:
+                proc = await asyncio.create_subprocess_exec(
+                    "git", "pull", "origin", "main",
+                    cwd=git_dir,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await proc.communicate()
+                out = stdout.decode().strip()
+                err = stderr.decode().strip()
+
+                if proc.returncode == 0:
+                    if "Already up to date" not in out and "Already up-to-date" not in out and len(out) > 0:
+                        print(f"\033[32m◈ Auto-Update: Pulled new updates from GitHub:\n{out}\033[0m")
+                        print(f"\033[33m◈ Auto-Update: Restarting {BRAND_NAME} to apply updates...\033[0m")
+                        log_channel = client.get_channel(LOG_CHANNEL_ID)
+                        if log_channel:
+                            try:
+                                embed = discord.Embed(
+                                    title="◈ Auto Git Update",
+                                    description=f"Pulled new updates from GitHub repository:\n```\n{out[:1500]}\n```\nRestarting {BRAND_NAME} to apply changes...",
+                                    color=0x2ecc71
+                                )
+                                embed.timestamp = discord.utils.utcnow()
+                                await log_channel.send(embed=embed)
+                            except Exception:
+                                pass
+                        await asyncio.sleep(2)
+                        restart_program()
+                else:
+                    if err:
+                        print(f"\033[33m◈ Auto-Update background check notice: {err}\033[0m")
+        except Exception as e:
+            print(f"◈ Auto-Update background check error: {e}")
+
+        await asyncio.sleep(600) # Check every 10 minutes
+
 # --- Event Handlers ---
 @client.event
 async def on_ready():
@@ -105,6 +189,7 @@ async def on_ready():
 
     client.loop.create_task(sync_commands())
     client.loop.create_task(update_stats())
+    client.loop.create_task(auto_git_update_task())
 
 
 @client.event

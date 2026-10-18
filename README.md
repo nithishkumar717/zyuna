@@ -21,7 +21,7 @@
 <p>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-red?style=for-the-badge"/></a>
   <a href="https://discord.gg/YzHCx5yQXv"><img src="https://img.shields.io/badge/Discord-Join_Server-5865F2?style=for-the-badge&logo=discord&logoColor=white"/></a>
-  <a href="https://github.com/nithishkumar717/yuna-bot"><img src="https://img.shields.io/badge/GitHub-Yuna--Bot-181717?style=for-the-badge&logo=github&logoColor=white"/></a>
+  <a href="https://github.com/nithishkumar717/zyuna"><img src="https://img.shields.io/badge/GitHub-Zyuna-181717?style=for-the-badge&logo=github&logoColor=white"/></a>
 </p>
 
 </div>
@@ -146,8 +146,8 @@ Zyuna-CV2-With-Dashboard/
 **1 — Clone the repo**
 
 ```bash
-git clone https://github.com/nithishkumar717/yuna-bot
-cd yuna-bot/bot
+git clone https://github.com/nithishkumar717/zyuna.git
+cd zyuna/bot
 ```
 
 **2 — Install dependencies**
@@ -400,7 +400,7 @@ Runs automatically on startup when `EMOJI_SYNC=true`:
 
 <p>
   <a href="https://discord.gg/YzHCx5yQXv"><img src="https://img.shields.io/badge/Discord-Join_Server-5865F2?style=for-the-badge&logo=discord&logoColor=white"/></a>
-  <a href="https://github.com/nithishkumar717/yuna-bot"><img src="https://img.shields.io/badge/GitHub-Yuna--Bot-181717?style=for-the-badge&logo=github&logoColor=white"/></a>
+  <a href="https://github.com/nithishkumar717/zyuna"><img src="https://img.shields.io/badge/GitHub-Zyuna-181717?style=for-the-badge&logo=github&logoColor=white"/></a>
 </p>
 
 © 2026 Nerd X Live — MIT License
