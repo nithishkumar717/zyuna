@@ -98,19 +98,44 @@ Threads : {len(guild.threads)}
             if not guild.chunked:
                 await guild.chunk()
 
+            try:
+                from utils.Tools import getConfig
+                prefix_data = await getConfig(guild.id)
+                prefix = prefix_data.get("prefix", "$")
+            except Exception:
+                prefix = "$"
+
+            brand = BRAND_NAME if BRAND_NAME else "Yuna"
+            avatar_url = self.client.user.display_avatar.url if self.client.user else guild.me.display_avatar.url
+            domain = websiteLink.replace("https://", "").replace("http://", "").rstrip("/")
+
             embed = discord.Embed(
-                description=f"{ARROWRED} Prefix For This Server is `>`\n{ARROWRED} Get Started with `>help`\n{ARROWRED} For detailed guides, FAQ & information, visit our **[Support Server]({serverLink})**",
-                color=0xFF0000,
+                description=(
+                    f"**Welcome to {brand.upper()}**\n"
+                    f"Thanks for adding to **{guild.name}**!\n"
+                    f"Your elegant server companion is ready.\n\n"
+                    f"**Prefix** · `{prefix}`\n"
+                    f"**Help** · `{prefix}help`\n"
+                    f"**Website** · [yuna dashboard]({websiteLink})\n"
+                    f"**Support** · [Join our server]({serverLink})"
+                ),
+                color=0x7C3AED,
             )
             embed.set_author(
-                name="Thanks for adding me!", icon_url=guild.me.display_avatar.url
+                name=f"Thanks for adding to {guild.name}", icon_url=avatar_url
             )
+            embed.set_thumbnail(url=avatar_url)
             embed.set_footer(
-                text=f"Powered by {BRAND_NAME}™",
+                text=f"{brand.upper()} Development™ • https://{domain}",
+                icon_url=avatar_url,
             )
-            if guild.icon:
-                embed.set_thumbnail(url=guild.icon.url)
+            embed.timestamp = discord.utils.utcnow()
 
+            dashboard_btn = Button(
+                label=f"{brand.lower()} web-dashboard",
+                style=discord.ButtonStyle.link,
+                url=websiteLink,
+            )
             support = Button(
                 label="Support",
                 style=discord.ButtonStyle.link,
@@ -118,6 +143,7 @@ Threads : {len(guild.threads)}
             )
 
             view = View()
+            view.add_item(dashboard_btn)
             view.add_item(support)
             channel = discord.utils.get(guild.text_channels, name="general")
             if not channel:
@@ -134,7 +160,7 @@ Threads : {len(guild.threads)}
                     )
                     return
 
-            await channel.send(embed=embed, view=view)
+            await channel.send(content=f"Thanks for adding to {guild.name}", embed=embed, view=view)
 
         except Exception as e:
             logging.error(f"Error in on_guild_join: {e}")
