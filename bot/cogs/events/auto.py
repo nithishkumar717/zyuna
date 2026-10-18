@@ -33,45 +33,45 @@ class Autorole(Cog):
                 except Exception:
                     prefix = "$"
 
-                brand = BRAND_NAME if BRAND_NAME else "Yuna"
-                avatar_url = self.bot.user.display_avatar.url if self.bot.user else guild.me.display_avatar.url
-                domain = websiteLink.replace("https://", "").replace("http://", "").rstrip("/")
+                bot_name = BRAND_NAME if BRAND_NAME else (self.bot.user.name if self.bot.user else "Zyuna")
+                adder_name = entry.user.display_name if entry.user else "there"
+                invite_url = f"https://discord.com/oauth2/authorize?client_id={self.bot.user.id}&permissions=8&scope=bot%20applications.commands"
+                support_url = serverLink if serverLink else "https://discord.gg/YzHCx5yQXv"
 
+                # Message header content
+                content = f"🧙 **Hey ! {adder_name} , I am {bot_name}!**"
+
+                # Modern sleek card embed
                 embed = discord.Embed(
                     description=(
-                        f"**Welcome to {brand.upper()}**\n"
-                        f"Thanks for adding to **{guild.name}**!\n"
-                        f"Your elegant server companion is ready.\n\n"
-                        f"**Prefix** · `{prefix}`\n"
-                        f"**Help** · `{prefix}help`\n"
-                        f"**Website** · [yuna dashboard]({websiteLink})\n"
-                        f"**Support** · [Join our server]({serverLink})"
+                        f"» **Thanks for adding me to {guild.name}!**\n"
+                        f"» Type `{prefix}help` or `{prefix}h` to dive in.\n"
+                        f"» Fully equipped: Antinuke · Music · Automod & more."
                     ),
-                    color=0x7C3AED
+                    color=0x474851
                 )
-                embed.set_author(name=f"Thanks for adding to {guild.name}", icon_url=avatar_url)
-                embed.set_thumbnail(url=avatar_url)
-                embed.set_footer(
-                    text=f"{brand.upper()} Development™ • https://{domain}",
-                    icon_url=avatar_url
-                )
-                embed.timestamp = discord.utils.utcnow()
 
-                dashboard_button = Button(
-                    label=f"{brand.lower()} web-dashboard",
+                user_avatar = entry.user.display_avatar.url if entry.user else (
+                    self.bot.user.display_avatar.url if self.bot.user else guild.me.display_avatar.url
+                )
+                embed.set_thumbnail(url=user_avatar)
+                embed.set_footer(text=f"{bot_name}! • Multipurpose • No fillers")
+
+                invite_button = Button(
+                    label="Invite Bot",
                     style=discord.ButtonStyle.link,
-                    url=websiteLink
+                    url=invite_url
                 )
                 support_button = Button(
-                    label="Support",
+                    label="Support Server",
                     style=discord.ButtonStyle.link,
-                    url=serverLink
+                    url=support_url
                 )
                 view = View()
-                view.add_item(dashboard_button)
+                view.add_item(invite_button)
                 view.add_item(support_button)
 
                 try:
-                    await entry.user.send(content=f"Thanks for adding to {guild.name}", embed=embed, view=view)
+                    await entry.user.send(content=content, embed=embed, view=view)
                 except Exception as e:
                     print(f"Failed to send welcome DM: {e}")
