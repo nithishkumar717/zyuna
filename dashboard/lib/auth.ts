@@ -17,6 +17,7 @@ import DiscordProvider from "next-auth/providers/discord";
 import { AuthOptions } from "next-auth";
 
 export const authOptions: AuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET || "zyuna_nextauth_default_secret_string_2026_change_me_BY_NERD_X_LIVE",
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID || "",
