@@ -59,15 +59,22 @@ def _restart() -> None:
 
 
 async def _fetch_emoji_image(session: aiohttp.ClientSession, emoji_id: str, animated: bool):
-    ext = "gif" if animated else "webp"
-    url = f"https://cdn.discordapp.com/emojis/{emoji_id}.{ext}"
-    try:
-        async with session.get(url, allow_redirects=True) as r:
-            if r.status == 200:
-                return await r.read()
-    except Exception:
-        pass
-    return None
+    """Fetch emoji image bytes from Discord CDN, trying multiple extensions."""
+    exts = ["gif", "png", "webp"] if animated else ["png", "webp", "gif"]
+    cdn_headers = {"User-Agent": "Mozilla/5.0"}
+    for ext in exts:
+        url = f"https://cdn.discordapp.com/emojis/{emoji_id}.{ext}"
+        try:
+            async with session.get(url, headers=cdn_headers, allow_redirects=True) as r:
+                if r.status == 200:
+                    data = await r.read()
+                    if data:
+                        is_gif = data[:3] == b"GIF"
+                        mime = "image/gif" if is_gif else ("image/png" if ext == "png" else "image/webp")
+                        return data, mime, is_gif
+        except Exception:
+            continue
+    return None, None, False
 
 
 async def run_sync(token: str) -> None:
@@ -155,13 +162,12 @@ async def run_sync(token: str) -> None:
             # Not found — upload it
             info(f"Uploading: {name} {Fore.LIGHTBLACK_EX}(not in application emojis)")
 
-            image_data = await _fetch_emoji_image(session, old_id, animated)
+            image_data, mime, is_gif = await _fetch_emoji_image(session, old_id, animated)
             if not image_data:
                 error(f"Could not download image for {name} [ID: {old_id}]")
                 failed += 1
                 continue
 
-            mime = "image/gif" if animated else "image/webp"
             b64 = base64.b64encode(image_data).decode("utf-8")
             image_uri = f"data:{mime};base64,{b64}"
 
@@ -172,8 +178,9 @@ async def run_sync(token: str) -> None:
                 if r2.status in (200, 201):
                     new_emoji = await r2.json()
                     new_id = new_emoji["id"]
+                    anim_prefix = "a" if is_gif else ""
                     old_str = f"<{animated_str}:{name}:{old_id}>"
-                    new_str = f"<{animated_str}:{new_emoji['name']}:{new_id}>"
+                    new_str = f"<{anim_prefix}:{new_emoji['name']}:{new_id}>"
                     content = content.replace(old_str, new_str)
                     app_emojis.append(new_emoji)
                     updated = True
