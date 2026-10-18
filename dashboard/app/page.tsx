@@ -17,7 +17,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 import { 
   ShieldCheck, 
   Zap, 
@@ -47,6 +48,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (status === "authenticated") {
+      router.push("/dashboard");
+    }
+  }, [status, router]);
+
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 selection:bg-red-500/30 font-sans overflow-x-hidden">
       {/* Dynamic Background */}
@@ -76,13 +86,22 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button 
-              onClick={() => signIn('discord', { callbackUrl: '/dashboard' })}
-              className="rounded-xl px-7 h-11 font-black uppercase tracking-widest text-[10px] gap-2.5 shadow-2xl shadow-red-500/20 hover:scale-[1.05] active:scale-95 transition-all bg-gradient-to-r from-red-500 to-red-700 border-none"
-            >
-              <LogIn className="h-3.5 w-3.5" />
-              Initialize Console
-            </Button>
+            {status === "authenticated" ? (
+              <Link href="/dashboard">
+                <Button className="rounded-xl px-7 h-11 font-black uppercase tracking-widest text-[10px] gap-2.5 shadow-2xl shadow-red-500/20 hover:scale-[1.05] active:scale-95 transition-all bg-gradient-to-r from-red-500 to-red-700 border-none">
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Button 
+                onClick={() => signIn('discord', { callbackUrl: '/dashboard' })}
+                className="rounded-xl px-7 h-11 font-black uppercase tracking-widest text-[10px] gap-2.5 shadow-2xl shadow-red-500/20 hover:scale-[1.05] active:scale-95 transition-all bg-gradient-to-r from-red-500 to-red-700 border-none"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                Initialize Console
+              </Button>
+            )}
           </div>
         </div>
       </nav>
@@ -109,13 +128,22 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300">
-            <Button 
-              onClick={() => signIn('discord', { callbackUrl: '/dashboard' })}
-              className="w-full sm:w-auto rounded-2xl px-14 py-9 text-lg font-black uppercase gap-4 group shadow-[0_0_50px_rgba(239,68,68,0.2)] bg-red-600 text-white hover:bg-red-500 border-none transition-all hover:scale-105"
-            >
-              <LayoutDashboard className="h-6 w-6 group-hover:rotate-12 transition-transform" />
-              Open Dashboard
-            </Button>
+            {status === "authenticated" ? (
+              <Link href="/dashboard" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto rounded-2xl px-14 py-9 text-lg font-black uppercase gap-4 group shadow-[0_0_50px_rgba(239,68,68,0.2)] bg-red-600 text-white hover:bg-red-500 border-none transition-all hover:scale-105">
+                  <LayoutDashboard className="h-6 w-6 group-hover:rotate-12 transition-transform" />
+                  Open Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Button 
+                onClick={() => signIn('discord', { callbackUrl: '/dashboard' })}
+                className="w-full sm:w-auto rounded-2xl px-14 py-9 text-lg font-black uppercase gap-4 group shadow-[0_0_50px_rgba(239,68,68,0.2)] bg-red-600 text-white hover:bg-red-500 border-none transition-all hover:scale-105"
+              >
+                <LayoutDashboard className="h-6 w-6 group-hover:rotate-12 transition-transform" />
+                Open Dashboard
+              </Button>
+            )}
             <Button variant="outline" className="w-full sm:w-auto rounded-2xl px-14 py-9 text-lg font-bold border-white/5 bg-white/[0.02] backdrop-blur-3xl hover:bg-white/[0.05] gap-3 text-white transition-all">
               Add to Server
               <ChevronRight className="h-5 w-5 opacity-40 group-hover:translate-x-1 transition-transform" />
@@ -391,12 +419,20 @@ export default function LandingPage() {
               <h2 className="text-7xl md:text-[9rem] font-bold text-white tracking-tighter font-outfit mb-12 uppercase leading-[0.8] italic">Ready to <br />Evolve?</h2>
               <p className="text-2xl text-white/70 max-w-3xl mx-auto mb-20 font-medium">Join 5,000+ communities scaling their automation with the Zyuna Engine. Setup takes less than 30 seconds.</p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-8 tracking-widest uppercase text-xs font-black">
-                <Button 
-                  onClick={() => signIn('discord', { callbackUrl: '/dashboard' })}
-                  className="w-full sm:w-auto rounded-3xl px-16 py-10 bg-white text-black hover:bg-slate-100 border-none shadow-[0_20px_50px_rgba(0,0,0,0.4)] font-black text-lg transition-transform hover:scale-105 active:scale-95"
-                >
-                  Get Started Free
-                </Button>
+                {status === "authenticated" ? (
+                  <Link href="/dashboard" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto rounded-3xl px-16 py-10 bg-white text-black hover:bg-slate-100 border-none shadow-[0_20px_50px_rgba(0,0,0,0.4)] font-black text-lg transition-transform hover:scale-105 active:scale-95">
+                      Open Dashboard
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button 
+                    onClick={() => signIn('discord', { callbackUrl: '/dashboard' })}
+                    className="w-full sm:w-auto rounded-3xl px-16 py-10 bg-white text-black hover:bg-slate-100 border-none shadow-[0_20px_50px_rgba(0,0,0,0.4)] font-black text-lg transition-transform hover:scale-105 active:scale-95"
+                  >
+                    Get Started Free
+                  </Button>
+                )}
                 <div className="flex items-center gap-3 text-white">
                    <div className="h-3 w-3 rounded-full bg-white animate-pulse" />
                    Neural Uplink: Stable
