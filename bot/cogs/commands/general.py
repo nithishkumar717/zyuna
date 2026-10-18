@@ -388,10 +388,11 @@ class General(commands.Cog):
   @ignore_check()
   @commands.cooldown(1, 3, commands.BucketType.user)
   async def invite(self, ctx: commands.Context):
+      bot_id = self.client.user.id if self.client.user else "1525728642913669260"
       invite_text = (
-          "```Empower your server with blazing-fast features and 24/7 support!```\n"
+          f"```Empower your server with blazing-fast features and 24/7 support!```\n"
           f"{ZYROXLINKS} **Quick Actions**\n"
-          f">>> **[Invite {BotName}](https://discord.com/oauth2/authorize?client_id=1396114795102470196&permissions=8&integration_type=0&scope=bot+applications.commands)**\n"
-          "**[Support Server](https://discord.gg/YzHCx5yQXv)**"
+          f">>> **[Invite {BotName}](https://discord.com/oauth2/authorize?client_id={bot_id}&permissions=8&integration_type=0&scope=bot+applications.commands)**\n"
+          f"**[Support Server]({SUPPORT_SERVER_URL})**"
       )
       await ctx.send(view=CV2(f"{ZYROXCONNECTION} {BotName} Integration Hub!", invite_text))

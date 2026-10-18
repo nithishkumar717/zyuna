@@ -53,8 +53,7 @@ class FieldPagePaginator(menus.ListPageSource):
             text = f'• Page {menu.current_page + 1}/{maximum} | Requested by {menu.ctx.author.display_name}'
             self.embed.set_footer(
                 text=text,
-                icon_url=
-                "https://cdn.discordapp.com/icons/699587669059174461/f689b4366447d5a23eda8d0ec749c1ba.png?width=115&height=115"
+                icon_url=menu.ctx.me.display_avatar.url if hasattr(menu, "ctx") and hasattr(menu.ctx, "me") else None
             )
             #self.embed.timestamp = discord.utils.utcnow()
         return self.embed
@@ -102,8 +101,7 @@ class DescriptionEmbedPaginator(menus.ListPageSource):
             text = f'• Page {menu.current_page + 1}/{maximum} | Requested by {menu.ctx.author.display_name}'
             self.embed.set_footer(
                 text=text,
-                icon_url=
-                "https://cdn.discordapp.com/icons/699587669059174461/f689b4366447d5a23eda8d0ec749c1ba.png?width=115&height=115"
+                icon_url=menu.ctx.me.display_avatar.url if hasattr(menu, "ctx") and hasattr(menu.ctx, "me") else None
             )
 
         return self.embed

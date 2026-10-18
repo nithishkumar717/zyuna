@@ -24,7 +24,7 @@ BotName    = BRAND_NAME
 SUPPORT_SERVER_URL = os.environ.get("SUPPORT_SERVER_URL", "https://discord.gg/YzHCx5yQXv")
 server     = SUPPORT_SERVER_URL
 serverLink = SUPPORT_SERVER_URL
-ch         = "https://discord.com/channels/699587669059174461/1271825678710476911"
+ch         = SUPPORT_SERVER_URL
 
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "https://zyuna.vercel.app")
 website       = DASHBOARD_URL

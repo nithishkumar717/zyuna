@@ -156,7 +156,7 @@ class HelpCommand(commands.HelpCommand):
     )
 
     embed.set_footer(
-      text=f"Requested By {self.context.author} | [Support]({serverLink})",
+      text=f"Requested By {self.context.author} • Support: {serverLink}",
     )
     
     view = vhelp.View(mapping=mapping, ctx=self.context, homeembed=embed, ui=2)
