@@ -16,8 +16,16 @@
 import DiscordProvider from "next-auth/providers/discord";
 import { AuthOptions } from "next-auth";
 
+if (!process.env.DISCORD_CLIENT_ID) {
+  console.error("[NextAuth] CRITICAL: DISCORD_CLIENT_ID is not configured in environment variables!");
+}
+if (!process.env.DISCORD_CLIENT_SECRET) {
+  console.error("[NextAuth] CRITICAL: DISCORD_CLIENT_SECRET is not configured in environment variables! Discord token exchange will fail with OAuthCallback error.");
+}
+
 export const authOptions: AuthOptions = {
   secret: process.env.NEXTAUTH_SECRET || "zyuna_nextauth_default_secret_string_2026_change_me_BY_NERD_X_LIVE",
+  debug: process.env.NODE_ENV === "development" || process.env.NEXTAUTH_DEBUG === "true",
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID || "",
