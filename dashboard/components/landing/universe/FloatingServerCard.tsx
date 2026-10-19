@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { PublicBotServer, UniverseDepth } from './types';
 
 // Discord Partner Badge (Scalloped emblem with partner glyph)
@@ -115,12 +116,14 @@ export const FloatingServerCard: React.FC<FloatingServerCardProps> = ({
       {/* Server Icon with Online Ring */}
       <div className="relative shrink-0">
         {server.icon && !imgError ? (
-          <img
+          <Image
             src={server.icon}
             alt={server.name}
+            width={36}
+            height={36}
             onError={() => setImgError(true)}
             className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover ring-1 ring-white/15 group-hover:scale-105 transition-transform duration-200"
-            loading="lazy"
+            unoptimized
           />
         ) : (
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full shrink-0 bg-gradient-to-br from-[#5865F2]/80 to-purple-800/80 border border-white/15 flex items-center justify-center text-[10px] sm:text-[11px] font-bold text-white group-hover:scale-105 transition-transform duration-200 shadow-inner">

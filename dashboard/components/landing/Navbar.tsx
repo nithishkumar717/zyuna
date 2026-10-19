@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { BrandLogo } from './BrandLogo';
 import { LANGUAGES, LanguageCode, getTranslation } from '@/lib/translations';
 import { 
@@ -211,10 +212,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 aria-label="User profile menu"
               >
                 {user.image ? (
-                  <img 
+                  <Image 
                     src={user.image} 
                     alt={user.name || "User"} 
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded-full ring-2 ring-red-500/80 group-hover:ring-red-400 object-cover" 
+                    unoptimized
                   />
                 ) : (
                   <div className="w-8 h-8 rounded-full ring-2 ring-red-500/80 bg-red-600/30 flex items-center justify-center text-xs font-bold text-white">
@@ -230,7 +234,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="absolute right-0 mt-2.5 w-56 bg-[#11131c] border border-slate-800 rounded-2xl shadow-2xl shadow-black/80 p-2 z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
                   <div className="px-3 py-2.5 rounded-xl bg-slate-900/70 border border-slate-800/60 flex items-center gap-2.5">
                     {user.image && (
-                      <img src={user.image} alt={user.name || "User"} className="w-7 h-7 rounded-full" />
+                      <Image src={user.image} alt={user.name || "User"} width={28} height={28} className="w-7 h-7 rounded-full" unoptimized />
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-bold text-white truncate">{user.name}</div>

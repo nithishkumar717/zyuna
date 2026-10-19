@@ -43,10 +43,10 @@ export const CommandVsWebSection: React.FC = () => {
 
               {/* Terminal code snippet simulation */}
               <div className="bg-[#080a10] rounded-xl p-4 font-mono text-xs text-slate-400 space-y-2 border border-slate-900 shadow-inner">
-                <p className="text-slate-500">// Complex, memorized parameter flags</p>
+                <p className="text-slate-500">{"// Complex, memorized parameter flags"}</p>
                 <p className="text-red-400/90">/automod spam set_limit threshold:5 time:3s action:delete mute_time:3600 ignore_roles:@Admin</p>
                 <p className="text-slate-600">❌ Error: Invalid role snowflake ID format</p>
-                <p className="text-slate-500">// Blind embed formatting without preview</p>
+                <p className="text-slate-500">{"// Blind embed formatting without preview"}</p>
                 <p className="text-slate-300">
                   {'/welcome embed title:"Welcome!" color:0x5865F2 desc:"Hey {user} welcome to {guild}..."'}
                 </p>

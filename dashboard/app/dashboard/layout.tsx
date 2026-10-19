@@ -17,6 +17,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Server, ShieldCheck, Ticket, BarChart4, FileText, Settings,
@@ -313,10 +314,13 @@ export default function DashboardLayout({
           <div className="flex items-center gap-3 p-2 bg-white/[0.02] rounded-2xl border border-white/[0.05]">
             <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center ring-1 ring-white/10 overflow-hidden border border-red-500/20">
               {session?.user?.image ? (
-                <img
+                <Image
                   src={session.user.image}
                   alt="User Avatar"
+                  width={40}
+                  height={40}
                   className="h-full w-full object-cover opacity-80"
+                  unoptimized
                 />
               ) : (
                 <User className="h-6 w-6 text-red-500/50" />
@@ -410,7 +414,7 @@ export default function DashboardLayout({
               >
                 <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center overflow-hidden border border-red-500/20 ring-2 ring-transparent group-hover:ring-red-500/30 transition-all">
                   {session?.user?.image ? (
-                    <img src={session.user.image} alt="User Avatar" className="h-full w-full object-cover opacity-80" />
+                    <Image src={session.user.image} alt="User Avatar" width={36} height={36} className="h-full w-full object-cover opacity-80" unoptimized />
                   ) : (
                     <User className="h-5 w-5 text-red-500/50" />
                   )}
