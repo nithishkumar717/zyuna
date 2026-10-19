@@ -25,6 +25,17 @@ for _p in [
     if _p and os.path.exists(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
 
+# Initialize global IST timezone logging for console prints & standard library logging
+try:
+    from bot.utils.time_utils import setup_ist_logging, now_ist, format_ist_full, format_ist_datetime
+    setup_ist_logging()
+except (ImportError, ModuleNotFoundError):
+    try:
+        from utils.time_utils import setup_ist_logging, now_ist, format_ist_full, format_ist_datetime
+        setup_ist_logging()
+    except Exception:
+        pass
+
 # If core is not yet found, check for zip archives to auto-extract or search subdirectories
 if not any(os.path.isdir(os.path.join(p, "core")) for p in sys.path if isinstance(p, str) and os.path.isdir(p)):
     import zipfile
@@ -280,7 +291,8 @@ async def on_guild_join(guild: discord.Guild):
     # Log when the bot joins a server
     log_channel = client.get_channel(LOG_CHANNEL_ID)
     if log_channel:
-        await log_channel.send(f"{BRAND_NAME} has been added to the server: **{guild.name}** (ID: `{guild.id}`)")
+        ist_now = format_ist_full() if "format_ist_full" in globals() else datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        await log_channel.send(f"[{ist_now}] **{BRAND_NAME}** has been added to the server: **{guild.name}** (ID: `{guild.id}`)")
 
 @client.event
 async def on_command_completion(context: commands.Context) -> None:
@@ -308,6 +320,8 @@ async def on_command_completion(context: commands.Context) -> None:
         else:
             embed.add_field(name="User (DM)", value=f"{context.author.mention} (`{context.author.id}`)", inline=False)
         
+        if "format_ist_full" in globals():
+            embed.add_field(name="Date & Time (IST)", value=f"`{format_ist_full()}`", inline=False)
         embed.timestamp = discord.utils.utcnow()
         embed.set_footer(text=f"{BRAND_NAME} Development™ ❤️", icon_url=client.user.display_avatar.url)
         
