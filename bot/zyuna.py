@@ -11,13 +11,16 @@ from datetime import datetime
 import random
 import time
 
-# Ensure current working dir, script dir, and subfolders are in sys.path
+# Ensure current working dir, script dir, parent dir, and subfolders are in sys.path
 _script_dir = os.path.dirname(os.path.abspath(__file__))
+_parent_dir = os.path.dirname(_script_dir)
 for _p in [
     _script_dir,
+    _parent_dir,
     os.getcwd(),
     os.path.join(_script_dir, "bot"),
     os.path.join(os.getcwd(), "bot"),
+    os.path.join(_parent_dir, "bot"),
 ]:
     if _p and os.path.exists(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
@@ -93,18 +96,49 @@ def _auto_git_pull():
 _auto_git_pull()
 
 try:
-    from core import Context, zyuna
-except ImportError:
-    from core import Context, zyrox
-    zyuna = zyrox
-from core.Cog import Cog
-from utils.Tools import *
-from utils.config import *
-from utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
-from utils.sync_emojis import run_sync
+    from bot.core import Context, zyuna
+    from bot.core.Cog import Cog
+    from bot.utils.Tools import *
+    from bot.utils.config import *
+    from bot.utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
+    from bot.utils.sync_emojis import run_sync
+except (ImportError, ModuleNotFoundError):
+    try:
+        from core import Context, zyuna
+    except ImportError:
+        from core import Context, zyrox
+        zyuna = zyrox
+    from core.Cog import Cog
+    from utils.Tools import *
+    from utils.config import *
+    from utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
+    from utils.sync_emojis import run_sync
 
 import jishaku
-import cogs
+try:
+    import bot.cogs as cogs
+except (ImportError, ModuleNotFoundError):
+    import cogs
+
+# Alias modules in sys.modules so all imports like 'from core import ...' or 'from bot.core import ...'
+# resolve to the exact same module instances without NumPy namespace collisions or circular dependency issues.
+for _mod_name in list(sys.modules.keys()):
+    if _mod_name.startswith("bot.core"):
+        _alias = _mod_name.replace("bot.core", "core", 1)
+        if _alias not in sys.modules:
+            sys.modules[_alias] = sys.modules[_mod_name]
+    elif _mod_name.startswith("bot.utils"):
+        _alias = _mod_name.replace("bot.utils", "utils", 1)
+        if _alias not in sys.modules:
+            sys.modules[_alias] = sys.modules[_mod_name]
+    elif _mod_name.startswith("core.") or _mod_name == "core":
+        _alias = f"bot.{_mod_name}"
+        if _alias not in sys.modules:
+            sys.modules[_alias] = sys.modules[_mod_name]
+    elif _mod_name.startswith("utils.") or _mod_name == "utils":
+        _alias = f"bot.{_mod_name}"
+        if _alias not in sys.modules:
+            sys.modules[_alias] = sys.modules[_mod_name]
 
 
 os.environ["JISHAKU_NO_DM_TRACEBACK"] = "False"
@@ -425,8 +459,12 @@ async def reaction(ctx: Context):
 # ---API Server for Dashboard Backend ---
 import uvicorn
 from threading import Thread
-from api.server import create_app
-from api.dependencies import set_bot
+try:
+    from bot.api.server import create_app
+    from bot.api.dependencies import set_bot
+except (ImportError, ModuleNotFoundError):
+    from api.server import create_app
+    from api.dependencies import set_bot
 
 fastapi_app = create_app()
 fastapi_app.state.bot = client
@@ -449,7 +487,10 @@ def keep_alive():
 keep_alive()
 
 # --- Cloudflare Tunnel (HTTPS for API) ---
-from utils.tunnel import start_tunnel
+try:
+    from bot.utils.tunnel import start_tunnel
+except (ImportError, ModuleNotFoundError):
+    from utils.tunnel import start_tunnel
 start_tunnel()
 
 # --- Main Bot Execution ---

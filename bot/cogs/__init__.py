@@ -12,7 +12,10 @@
 # ╚══════════════════════════════════════════════════════════════════╝
 
 from __future__ import annotations
-from core import zyuna, zyrox
+try:
+    from bot.core import zyuna, zyrox
+except (ImportError, ModuleNotFoundError):
+    from core import zyuna, zyrox
 from colorama import Fore, Style, init
 
 
@@ -182,7 +185,10 @@ from .moderation.topcheck import TopCheck
 from .moderation.snipe import Snipe
 
 
-from utils.config import BotName
+try:
+    from bot.utils.config import BotName
+except (ImportError, ModuleNotFoundError):
+    from utils.config import BotName
 
 async def setup(bot: zyrox):
   cogs_to_load = [

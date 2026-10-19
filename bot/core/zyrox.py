@@ -21,8 +21,12 @@ import asyncio
 import typing
 from typing import List
 import aiosqlite
-from utils.config import OWNER_IDS, BotName
-from utils import getConfig, updateConfig
+try:
+    from bot.utils.config import OWNER_IDS, BotName
+    from bot.utils import getConfig, updateConfig
+except (ImportError, ModuleNotFoundError):
+    from utils.config import OWNER_IDS, BotName
+    from utils import getConfig, updateConfig
 from .Context import Context
 from colorama import Fore, Style, init
 import importlib
@@ -65,7 +69,11 @@ class zyrox(commands.AutoShardedBot):
                 await self.load_extension(extension)
                 print(Fore.GREEN + Style.BRIGHT + f"Loaded extension: {extension}")
             except Exception as e:
-                print(f"{Fore.RED}{Style.BRIGHT}Failed to load extension {extension}. {e}")
+                try:
+                    await self.load_extension(f"bot.{extension}")
+                    print(Fore.GREEN + Style.BRIGHT + f"Loaded extension: bot.{extension}")
+                except Exception as inner_e:
+                    print(f"{Fore.RED}{Style.BRIGHT}Failed to load extension {extension}. {e} | {inner_e}")
         print(Fore.GREEN + Style.BRIGHT + "*" * 20)
 
     @tasks.loop(seconds=30)

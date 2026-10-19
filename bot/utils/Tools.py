@@ -14,10 +14,23 @@
 import json, sys, os
 import discord
 from discord.ext import commands
-from core import Context
-from utils.emoji import DENIED
+try:
+    from bot.core import Context
+except (ImportError, ModuleNotFoundError):
+    from core import Context
+
+try:
+    from bot.utils.emoji import DENIED
+except (ImportError, ModuleNotFoundError):
+    from utils.emoji import DENIED
 import aiosqlite
 import asyncio
+
+# Ensure local database directory exists
+try:
+    os.makedirs("db", exist_ok=True)
+except Exception:
+    pass
 
 async def setup_db():
   async with aiosqlite.connect('db/prefix.db') as db:

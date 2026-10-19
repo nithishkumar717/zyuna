@@ -13,9 +13,14 @@
 
 import discord
 from discord.utils import *
-from core import zyrox, Cog
-from utils.Tools import *
-from utils.config import BotName, BRAND_NAME, serverLink, websiteLink
+try:
+    from bot.core import zyrox, Cog
+    from bot.utils.Tools import *
+    from bot.utils.config import BotName, BRAND_NAME, serverLink, websiteLink
+except (ImportError, ModuleNotFoundError):
+    from core import zyrox, Cog
+    from utils.Tools import *
+    from utils.config import BotName, BRAND_NAME, serverLink, websiteLink
 from discord.ext import commands
 from discord.ui import Button, View
 
