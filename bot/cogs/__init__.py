@@ -190,7 +190,7 @@ try:
 except (ImportError, ModuleNotFoundError):
     from utils.config import BotName
 
-async def setup(bot: zyrox):
+async def setup(bot: zyuna):
   cogs_to_load = [
         Help, General, Moderation, Automod, Welcomer, Fun, Games, Extra,
         Voice, Owner, Customrole, afk, Embed, Media, Ignore, TicketCog, Logging,

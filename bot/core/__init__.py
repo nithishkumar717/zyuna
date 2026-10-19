@@ -11,16 +11,8 @@
 # ║                                                                  ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-from .zyrox import zyrox
-try:
-    from .zyrox import zyuna
-except ImportError:
-    zyuna = zyrox
-
-if "zyuna" not in locals():
-    zyuna = zyrox
-
+from .zyuna import zyuna, zyrox, setup_bot
 from .Context import Context
 from .Cog import Cog
 
-__all__ = ["zyrox", "zyuna", "Context", "Cog"]
+__all__ = ["zyuna", "zyrox", "setup_bot", "Context", "Cog"]

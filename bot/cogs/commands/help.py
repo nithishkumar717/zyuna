@@ -12,273 +12,245 @@
 # ╚══════════════════════════════════════════════════════════════════╝
 
 import discord
-from utils.emoji import ARROWRED, BOOST, CAST, GAMES, LEVEL_UP, LOADINGRED, LOCK, MESSAGE, MINECRAFT, MUSIC, NEW, PIN, SEED, STAR, SWORD, SYSTEM, THUNDER, TICKET, WIFI, ZAI, ZARROW, ZBAN, ZBOT, ZCIRCLE, ZCIRCLE_ALT1, ZCLOUD, ZCOUNTING, ZMODULE, ZPEOPLE, ZROCKET, ZSAFE, ZTADA, ZUNMUTE, ZWRENCH
-from discord.ext import commands
-from discord import app_commands, Interaction
+import asyncio
 from difflib import get_close_matches
 from contextlib import suppress
-from core import Context
-from core.zyrox import zyrox
-from core.Cog import Cog
-from utils.Tools import getConfig
-from itertools import chain
-import json
-from utils import help as vhelp
-from utils import Paginator, DescriptionEmbedPaginator, FieldPagePaginator, TextPaginator
-import asyncio
-from utils.config import serverLink
-from utils.Tools import *
-from utils.cv2 import CV2, CV2Embed
-from utils.config import *
+from discord.ext import commands
 
-color = 0xFF0000
-client = zyrox()
+try:
+    from bot.core import Context, zyuna, zyrox
+    from bot.core.Cog import Cog
+    from bot.utils.Tools import getConfig, ignore_check, blacklist_check
+    from bot.utils.emoji import LOADINGRED, TICK, CROSS
+    from bot.utils.config import serverLink, websiteLink, BotName, BRAND_NAME
+    from bot.utils.cv2 import CV2, CV2Embed
+    from bot.utils import help as vhelp
+except (ImportError, ModuleNotFoundError):
+    from core import Context, zyuna, zyrox
+    from core.Cog import Cog
+    from utils.Tools import getConfig, ignore_check, blacklist_check
+    from utils.emoji import LOADINGRED, TICK, CROSS
+    from utils.config import serverLink, websiteLink, BotName, BRAND_NAME
+    from utils.cv2 import CV2, CV2Embed
+    from utils import help as vhelp
 
-from utils.config import BotName
+ACCENT_COLOR = 0xFF2A4D
+
 
 class HelpCommand(commands.HelpCommand):
+    """Next-Generation Components V2 (CV2) Command Help Engine."""
 
-  async def send_ignore_message(self, ctx, ignore_type: str):
-    if ignore_type == "channel":
-      await ctx.reply(f"This channel is ignored.", mention_author=False)
-    elif ignore_type == "command":
-      await ctx.reply(f"{ctx.author.mention} This Command, Channel, or You have been ignored here.", delete_after=6)
-    elif ignore_type == "user":
-      await ctx.reply(f"You are ignored.", mention_author=False)
+    async def send_ignore_message(self, ctx, ignore_type: str):
+        if ignore_type == "channel":
+            await ctx.reply("❌ This channel is currently ignored by the bot.", mention_author=False)
+        elif ignore_type == "command":
+            await ctx.reply(f"{ctx.author.mention} This command or channel has been restricted.", delete_after=6)
+        elif ignore_type == "user":
+            await ctx.reply("❌ You are currently blacklisted from using bot commands.", mention_author=False)
 
-  async def on_help_command_error(self, ctx, error):
-    errors = [
-      commands.CommandOnCooldown, commands.CommandNotFound,
-      discord.HTTPException, commands.CommandInvokeError
-    ]
-    if not type(error) in errors:
-      await self.context.reply(f"Unknown Error Occurred\n{error.original}",
-                               mention_author=False)
-    else:
-      if type(error) == commands.CommandOnCooldown:
-        return
-    return await super().on_help_command_error(ctx, error)
+    async def on_help_command_error(self, ctx, error):
+        errors = [
+            commands.CommandOnCooldown, commands.CommandNotFound,
+            discord.HTTPException, commands.CommandInvokeError
+        ]
+        if not type(error) in errors:
+            await self.context.reply(f"Unknown Help Error: {getattr(error, 'original', error)}", mention_author=False)
+        else:
+            if isinstance(error, commands.CommandOnCooldown):
+                return
+        return await super().on_help_command_error(ctx, error)
 
-  async def command_not_found(self, string: str) -> None:
-    ctx = self.context
-    check_ignore = await ignore_check().predicate(ctx)
-    check_blacklist = await blacklist_check().predicate(ctx)
+    async def command_not_found(self, string: str) -> None:
+        ctx = self.context
+        check_ignore = await ignore_check().predicate(ctx)
+        check_blacklist = await blacklist_check().predicate(ctx)
 
-    if not check_blacklist:
-        return
+        if not check_blacklist or not check_ignore:
+            return
 
-    if not check_ignore:
-        await self.send_ignore_message(ctx, "command")
-        return
+        cmds = [str(cmd) for cmd in self.context.bot.walk_commands()]
+        matches = get_close_matches(string, cmds, n=3, cutoff=0.55)
 
-    cmds = (str(cmd) for cmd in self.context.bot.walk_commands())
-    matches = get_close_matches(string, cmds)
+        prefix = ctx.prefix or ">"
+        desc = f"> Ops! Could not find any command matching `{string}`."
+        if matches:
+            suggestions = " • ".join(f"`{prefix}{m}`" for m in matches)
+            desc += f"\n\n💡 **Did you mean:** {suggestions}"
+        desc += f"\n\n-# Run `{prefix}help` to explore the full interactive Command Center."
 
-    embed = CV2Embed(
-        title=f"{BotName} Helper",
-        description=f">>> **Ops! Command not found with the name** `{string}`.",
-        color=0xFF0000
-    )
-
-    await ctx.reply(view=embed, mention_author=True)
-
-  async def send_bot_help(self, mapping):
-    ctx = self.context
-    check_ignore = await ignore_check().predicate(ctx)
-    check_blacklist = await blacklist_check().predicate(ctx)
-
-    if not check_blacklist:
-      return
-
-    if not check_ignore:
-      await self.send_ignore_message(ctx, "command")
-      return
-
-    # Show loading message
-    loading_embed = CV2(f"{LOADINGRED} Loading help Menu...")
-    loading_msg = await ctx.reply(view=loading_embed)
-
-    # Wait 2 seconds
-    await asyncio.sleep(2)
-
-    # Delete loading message
-    with suppress(discord.NotFound):
-      await loading_msg.delete()
-
-    data = await getConfig(self.context.guild.id)
-    prefix = data["prefix"]
-    filtered = await self.filter_commands(self.context.bot.walk_commands(), sort=True)
-
-    embed = CV2Embed(
-        description=(
-         f"**{ARROWRED} __Start {BotName} Today__**\n"        
-         f"**{ZARROW} Type {prefix}antinuke enable**\n"
-         f"**{ZARROW} Server Prefix:** `{prefix}`\n"
-         f"**{ZARROW} Total Commands:** `{len(set(self.context.bot.walk_commands()))}`\n"),         
-        color=0xFF0000)
-    
-    embed.add_field(
-        name=f"{ZCLOUD} Main Features",
-        value=f">>> \n {ZSAFE} `»` Security\n" 
-              f" {ZBOT} `»` Automoderation\n"
-              f" {ZWRENCH} `»` Utility\n" 
-              f" {MUSIC} `»` Music\n"
-              f" {WIFI} `»` Autoreact & responder\n"
-              f" {SWORD} `»` Moderation\n"
-              f" {ZPEOPLE} `»` Autorole & Invc\n"
-              f" {ZROCKET} `»` Fun\n"
-              f" {GAMES} `»` Games\n" 
-              f" {ZBAN} `»` Ignore Channels\n"
-              f" {WIFI} `»` Server\n"
-              f" {ZUNMUTE} `»` Voice\n"
-              f" {SEED} `»` Welcomer\n"  
-              f" {ZTADA} `»` Giveaway\n"
-              f" {TICKET} `»` Ticket {NEW}\n"
-              f" {ZPEOPLE} `»` Invite Tracker {NEW}\n"
-    )
-    
-    embed.add_field(
-        name=f" {ZMODULE} Extra Features",
-        value=f">>> \n {CAST} `»` Advance Logging\n"
-              f" {STAR} `»` Vanityroles\n"
-              f" {ZCOUNTING} `»` Counting {NEW}\n"
-              f" {SYSTEM} `»` J2C {NEW}\n"
-              f" {ZAI} `»` AI {NEW}\n"
-              f" {BOOST} `»` Boost {NEW}\n"
-              f" {LEVEL_UP} `»` Leveling {NEW}\n"
-              f" {PIN} `»` Sticky {NEW}\n"
-              f" {THUNDER} `»` Verification {NEW}\n"
-              f" {LOCK} `»` Encryption {NEW}\n" 
-              f" {MINECRAFT} `»` Minecraft {NEW}\n"
-              f" {MESSAGE} `»` Joindm {NEW}\n"
-              f" {ZCIRCLE} `»` Birthday {NEW}\n"
-              f" {ZCIRCLE_ALT1} `»` Customrole\n"           
-    )
-
-    embed.set_footer(
-      text=f"Requested By {self.context.author} • Support: {serverLink}",
-    )
-    
-    view = vhelp.View(mapping=mapping, ctx=self.context, homeembed=embed, ui=2)
-    await ctx.reply(view=view)
-
-  async def send_command_help(self, command):
-    ctx = self.context
-    check_ignore = await ignore_check().predicate(ctx)
-    check_blacklist = await blacklist_check().predicate(ctx)
-
-    if not check_blacklist:
-      return
-
-    if not check_ignore:
-      await self.send_ignore_message(ctx, "command")
-      return
-
-    help_content = f">>> {command.help}" if command.help else '>>> No Help Provided...'
-    embed = CV2Embed(
-        description=f"""{help_content}""",
-        color=color)
-    alias = ' & '.join(command.aliases)
-
-    embed.add_field(name="**Alt cmd**",
-                      value=f"```{alias}```" if command.aliases else "No Alt cmd",
-                      inline=False)
-    embed.add_field(name="**Usage**",
-                      value=f"```{self.context.prefix}{command.signature}```\n")
-    embed.set_author(name=f"{command.qualified_name.title()} Command")
-    embed.set_footer(text="<[] = optional | < > = required • Use Prefix Before Commands.")
-    await self.context.reply(view=embed, mention_author=False)
-
-  def get_command_signature(self, command: commands.Command) -> str:
-    parent = command.full_parent_name
-    if len(command.aliases) > 0:
-      aliases = ' | '.join(command.aliases)
-      fmt = f'[{command.name} | {aliases}]'
-      if parent:
-        fmt = f'{parent}'
-      alias = f'[{command.name} | {aliases}]'
-    else:
-      alias = command.name if not parent else f'{parent} {command.name}'
-    return f'{alias} {command.signature}'
-
-  def common_command_formatting(self, embed_like, command):
-    embed_like.title = self.get_command_signature(command)
-    if command.description:
-      embed_like.description = f'{command.description}\n\n{command.help}'
-    else:
-      embed_like.description = command.help or 'No help found...'
-
-  async def send_group_help(self, group):
-    ctx = self.context
-    check_ignore = await ignore_check().predicate(ctx)
-    check_blacklist = await blacklist_check().predicate(ctx)
-
-    if not check_blacklist:
-      return
-
-    if not check_ignore:
-      await self.send_ignore_message(ctx, "command")
-      return
-
-    entries = [
-        (
-            f"`{self.context.prefix}{cmd.qualified_name}`\n",
-            f"{cmd.short_doc if cmd.short_doc else ''}\n\u200b"
+        embed = CV2Embed(
+            title=f"# 🔍 Command Not Found",
+            description=desc,
+            color=ACCENT_COLOR
         )
-        for cmd in group.commands
-      ]
+        embed.set_footer(text=f"Requested by {ctx.author.display_name} • Support: {serverLink}")
+        await ctx.reply(view=embed, mention_author=False)
 
-    count = len(group.commands)
+    async def send_bot_help(self, mapping):
+        ctx = self.context
+        check_ignore = await ignore_check().predicate(ctx)
+        check_blacklist = await blacklist_check().predicate(ctx)
 
-    embeds = FieldPagePaginator(
-      entries=entries,
-      title=f"{group.qualified_name.title()} [{count}]",
-      description="< > Duty | [ ] Optional\n",
-      per_page=4
-    ).get_pages()   
-    
-    paginator = Paginator(ctx, embeds)
-    await paginator.paginate()
+        if not check_blacklist:
+            return
+        if not check_ignore:
+            await self.send_ignore_message(ctx, "command")
+            return
 
-  async def send_cog_help(self, cog):
-    ctx = self.context
-    check_ignore = await ignore_check().predicate(ctx)
-    check_blacklist = await blacklist_check().predicate(ctx)
+        # Smooth Loading Indicator
+        loading_embed = CV2(f"{LOADINGRED} Initializing {BRAND_NAME} Command Center...")
+        loading_msg = await ctx.reply(view=loading_embed)
 
-    if not check_blacklist:
-      return
+        await asyncio.sleep(0.3)
+        with suppress(discord.NotFound):
+            await loading_msg.delete()
 
-    if not check_ignore:
-      await self.send_ignore_message(ctx, "command")
-      return
+        # Telemetry & Configuration
+        try:
+            data = await getConfig(self.context.guild.id)
+            prefix = data.get("prefix", ">")
+        except Exception:
+            prefix = self.context.prefix or ">"
 
-    entries = [(
-      f"> `{self.context.prefix}{cmd.qualified_name}`",
-      f"-# Description : {cmd.short_doc if cmd.short_doc else ''}"
-      f"\n\u200b",
-    ) for cmd in cog.get_commands()]
-    paginator = Paginator(source=FieldPagePaginator(
-      entries=entries,
-      title=f"{BRAND_NAME}'s {cog.qualified_name.title()} ({len(cog.get_commands())})",
-      description="`<..> Required | [..] Optional`\n\n",
-      color=0xFF0000,
-      per_page=4),
-                          ctx=self.context)
-    await paginator.paginate()
+        total_commands = len(set(self.context.bot.walk_commands()))
+        active_cogs = len(self.context.bot.cogs)
+        latency_ms = round(self.context.bot.latency * 1000)
+
+        # High-Aesthetic Home Embed Card
+        embed = CV2Embed(
+            title=f"# ✨ {BRAND_NAME} System Operations • Command Center",
+            description=(
+                f"> High-performance Discord architecture featuring military-grade anti-nuke shielding, "
+                f"automated heuristic moderation, high-fidelity audio, and next-generation server engagement.\n\n"
+                f"### 📊 System Telemetry\n"
+                f"• **Prefix:** `{prefix}` | **Version:** `v7.02 Core` | **Latency:** `{latency_ms}ms`\n"
+                f"• **Commands Available:** `{total_commands}` | **Active Modules:** `{active_cogs} Systems`\n"
+                f"• **Architecture:** `Discord Components V2 (CV2)` | **Cluster:** `Operational`\n\n"
+                f"### 🧭 Module Directory\n"
+                f"🛡️ **`Defense Systems`** `»` Anti-Nuke • AutoMod • Advanced Logging • Whitelist • Nightmode • Emergency\n"
+                f"⚔️ **`Server Governance`** `»` Moderation • Auto-Roles • Reaction Roles • Tickets • Verification • Custom Roles\n"
+                f"🎙️ **`Studio Audio & VC`** `»` Music Playback • Voice Channels • Join-to-Create • 24/7 Channel Mode\n"
+                f"🚀 **`Automation & Utility`** `»` Welcomer • Sticky Messages • Join DM • Server Settings • Invites\n"
+                f"💎 **`Community & Engagement`** `»` AI Chat • Leveling • Counting • Vanity Roles • Games • Birthdays\n\n"
+                f"### ⚡ Quick Deployment\n"
+                f"• `{prefix}antinuke enable` `»` *Engage automated anti-nuke shielding*\n"
+                f"• `{prefix}automod enable` `»` *Activate intelligent raid & link filtering*\n"
+                f"• `{prefix}ticket setup` `»` *Deploy interactive user ticket panel*\n\n"
+                f"### 🕹️ Interactive Navigation\n"
+                f"Select any category from the dropdowns below or use the navigation bar."
+            ),
+            color=ACCENT_COLOR
+        )
+        embed.set_footer(text=f"Requested By {self.context.author.display_name} • Support: {serverLink}")
+
+        view = vhelp.View(mapping=mapping, ctx=self.context, homeembed=embed, ui=2)
+        await ctx.reply(view=view, mention_author=False)
+
+    async def send_command_help(self, command):
+        ctx = self.context
+        check_ignore = await ignore_check().predicate(ctx)
+        check_blacklist = await blacklist_check().predicate(ctx)
+
+        if not check_blacklist or not check_ignore:
+            return
+
+        sig = f"{self.context.prefix}{command.qualified_name} {command.signature}".strip()
+        help_desc = command.help or "No detailed description provided for this command."
+
+        embed = CV2Embed(
+            title=f"# 📌 Command: {self.context.prefix}{command.qualified_name}",
+            description=f"> {help_desc}",
+            color=ACCENT_COLOR
+        )
+        embed.add_field(name="Usage & Syntax", value=f"```bash\n{sig}\n```", inline=False)
+
+        if command.aliases:
+            aliases_fmt = " • ".join(f"`{a}`" for a in command.aliases)
+            embed.add_field(name="Alternative Aliases", value=aliases_fmt, inline=False)
+
+        if command.cog_name:
+            clean_cog = command.cog_name.strip("_").replace("_", " ").title()
+            embed.add_field(name="Module Department", value=f"`{clean_cog}`", inline=True)
+
+        embed.set_footer(text="Parameters: <required> • [optional] | Do not type brackets when running commands.")
+        await self.context.reply(view=embed, mention_author=False)
+
+    def get_command_signature(self, command: commands.Command) -> str:
+        parent = command.full_parent_name
+        if len(command.aliases) > 0:
+            aliases = ' | '.join(command.aliases)
+            alias = f"[{command.name} | {aliases}]"
+            if parent:
+                alias = f"{parent} {alias}"
+        else:
+            alias = command.name if not parent else f"{parent} {command.name}"
+        return f"{alias} {command.signature}".strip()
+
+    async def send_group_help(self, group):
+        ctx = self.context
+        check_ignore = await ignore_check().predicate(ctx)
+        check_blacklist = await blacklist_check().predicate(ctx)
+
+        if not check_blacklist or not check_ignore:
+            return
+
+        embed = CV2Embed(
+            title=f"# 📁 Group: {self.context.prefix}{group.qualified_name}",
+            description=f"> {group.help or 'Command group with multiple subcommands.'}",
+            color=ACCENT_COLOR
+        )
+
+        sub_list = []
+        for cmd in group.commands:
+            doc = cmd.short_doc or "No description"
+            sub_list.append(f"• **`{self.context.prefix}{cmd.qualified_name} {cmd.signature}`**\n  ↳ *{doc}*")
+
+        if sub_list:
+            embed.add_field(name=f"Subcommands ({len(group.commands)})", value="\n".join(sub_list), inline=False)
+
+        embed.set_footer(text=f"Requested by {ctx.author.display_name} • Type {self.context.prefix}help <subcommand> for details.")
+        await ctx.reply(view=embed, mention_author=False)
+
+    async def send_cog_help(self, cog):
+        ctx = self.context
+        check_ignore = await ignore_check().predicate(ctx)
+        check_blacklist = await blacklist_check().predicate(ctx)
+
+        if not check_blacklist or not check_ignore:
+            return
+
+        clean_name = cog.qualified_name.strip("_").replace("_", " ").title()
+        embed = CV2Embed(
+            title=f"# 🛡️ Module: {clean_name}",
+            description=f"> Browsing commands registered under **{clean_name}**.",
+            color=ACCENT_COLOR
+        )
+
+        cmds = cog.get_commands()
+        cmd_entries = []
+        for cmd in cmds:
+            doc = cmd.short_doc or "No description"
+            cmd_entries.append(f"• **`{self.context.prefix}{cmd.qualified_name}`** — *{doc}*")
+
+        if cmd_entries:
+            embed.add_field(name=f"Registered Commands ({len(cmds)})", value="\n".join(cmd_entries[:20]), inline=False)
+
+        embed.set_footer(text=f"Requested by {ctx.author.display_name} • Support: {serverLink}")
+        await ctx.reply(view=embed, mention_author=False)
 
 
 class Help(Cog, name="help"):
+    """Core Help Cog."""
+    def __init__(self, client: zyuna):
+        self._original_help_command = client.help_command
+        attributes = {
+            'name': "help",
+            'aliases': ['h'],
+            'cooldown': commands.CooldownMapping.from_cooldown(1, 4, commands.BucketType.user),
+            'help': 'Shows comprehensive help about the bot, commands, and modules'
+        }
+        client.help_command = HelpCommand(command_attrs=attributes)
+        client.help_command.cog = self
 
-  def __init__(self, client: zyrox):
-    self._original_help_command = client.help_command
-    attributes = {
-      'name': "help",
-      'aliases': ['h'],
-      'cooldown': commands.CooldownMapping.from_cooldown(1, 5, commands.BucketType.user),
-      'help': 'Shows help about bot, a command, or a category'
-    }
-    client.help_command = HelpCommand(command_attrs=attributes)
-    client.help_command.cog = self
-
-  async def cog_unload(self):
-    self.help_command = self._original_help_command
+    async def cog_unload(self):
+        self.help_command = self._original_help_command

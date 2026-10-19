@@ -35,13 +35,13 @@ import json
 import os
 
 if TYPE_CHECKING:
-    from core.zyrox import zyrox
+    from core.zyuna import zyuna, zyrox
 
 router = APIRouter()
 
 
 @router.get("/", response_model=List[GuildSummary], summary="List all guilds", description="Returns a summary of all guilds the bot is currently in.")
-async def list_guilds(bot: "zyrox" = Depends(get_bot)):
+async def list_guilds(bot: "zyuna" = Depends(get_bot)):
     """
     Lists detailed information about all guilds the bot is currently in.
     """
@@ -57,7 +57,7 @@ async def list_guilds(bot: "zyrox" = Depends(get_bot)):
     return guilds_list
 
 @router.get("/{guild_id}", response_model=GuildDetails, summary="Get guild details", description="Returns detailed metrics and metadata for a specific Discord guild.")
-async def get_guild_details(guild_id: int, bot: "zyrox" = Depends(get_bot)):
+async def get_guild_details(guild_id: int, bot: "zyuna" = Depends(get_bot)):
     """
     Returns detailed info for a specific guild by its ID.
     """
@@ -813,7 +813,7 @@ async def get_guild_j2c(guild_id: int):
     return J2CConfig(guild_id=str(guild_id))
 
 @router.patch("/{guild_id}/j2c", summary="Update J2C config")
-async def patch_guild_j2c(guild_id: int, data: J2CUpdate, bot: "zyrox" = Depends(get_bot)):
+async def patch_guild_j2c(guild_id: int, data: J2CUpdate, bot: "zyuna" = Depends(get_bot)):
     import aiosqlite
     
     def to_id(val):
@@ -993,7 +993,7 @@ async def patch_guild_customroles(guild_id: int, data: CustomRoleUpdate):
     return {"status": "success"}
 
 @router.get("/{guild_id}/logging", response_model=LoggingConfig, summary="Get Logging config", description="Retrieves the event logging configuration and designated log channels.")
-async def get_guild_logging(guild_id: int, bot: "zyrox" = Depends(get_bot)):
+async def get_guild_logging(guild_id: int, bot: "zyuna" = Depends(get_bot)):
     """
     Retrieves the logging configuration for a specific guild.
     """
@@ -1037,7 +1037,7 @@ async def get_guild_logging(guild_id: int, bot: "zyrox" = Depends(get_bot)):
     )
 
 @router.patch("/{guild_id}/logging", summary="Update Logging config", description="Updates which Discord events are logged and where they are posted.")
-async def patch_guild_logging(guild_id: int, data: LoggingUpdate, bot: "zyrox" = Depends(get_bot)):
+async def patch_guild_logging(guild_id: int, data: LoggingUpdate, bot: "zyuna" = Depends(get_bot)):
     """
     Updates the logging configuration for a specific guild.
     """
@@ -1069,7 +1069,7 @@ async def patch_guild_logging(guild_id: int, data: LoggingUpdate, bot: "zyrox" =
     return {"status": "success", "guild_id": guild_id}
 
 @router.get("/{guild_id}/leveling/leaderboard", response_model=List[LeaderboardEntry], summary="Get leveling leaderboard", description="Returns top users by XP for a specific guild.")
-async def get_leveling_leaderboard(guild_id: int, bot: "zyrox" = Depends(get_bot)):
+async def get_leveling_leaderboard(guild_id: int, bot: "zyuna" = Depends(get_bot)):
     db = await db_manager.get_connection('db/leveling.db')
     cursor = await db.execute(
         "SELECT user_id, xp FROM user_xp WHERE guild_id = ? ORDER BY xp DESC LIMIT 100", 
@@ -1109,7 +1109,7 @@ async def get_leveling_leaderboard(guild_id: int, bot: "zyrox" = Depends(get_bot
     return leaderboard
 
 @router.get("/{guild_id}/channels", response_model=List[DiscordChannel], summary="Get guild channels", description="Returns a list of all channels for the specific guild.")
-async def get_guild_channels(guild_id: int, bot: "zyrox" = Depends(get_bot)):
+async def get_guild_channels(guild_id: int, bot: "zyuna" = Depends(get_bot)):
     guild = bot.get_guild(guild_id)
     if not guild:
         raise HTTPException(status_code=404, detail="Guild not found")
@@ -1129,7 +1129,7 @@ async def get_guild_channels(guild_id: int, bot: "zyrox" = Depends(get_bot)):
     return channels
 
 @router.get("/{guild_id}/roles", response_model=List[DiscordRole], summary="Get guild roles", description="Returns a list of roles for the specific guild.")
-async def get_guild_roles(guild_id: int, bot: "zyrox" = Depends(get_bot)):
+async def get_guild_roles(guild_id: int, bot: "zyuna" = Depends(get_bot)):
     guild = bot.get_guild(guild_id)
     if not guild:
         raise HTTPException(status_code=404, detail="Guild not found")
