@@ -56,10 +56,6 @@ class Autorole(Cog):
                     color=0x474851
                 )
 
-                user_avatar = entry.user.display_avatar.url if entry.user else (
-                    self.bot.user.display_avatar.url if self.bot.user else guild.me.display_avatar.url
-                )
-                embed.set_thumbnail(url=user_avatar)
                 embed.set_footer(text=f"{bot_name}! • Multipurpose • No fillers")
 
                 invite_button = Button(

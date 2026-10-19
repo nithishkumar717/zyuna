@@ -51,6 +51,17 @@ if not any(os.path.isdir(os.path.join(p, "core")) for p in sys.path if isinstanc
     print(f"   Working Directory: {os.getcwd()}")
     print(f"   Files in directory: {os.listdir(os.getcwd())[:20]}")
 
+# Cleanup any deprecated or leftover command files (e.g. legacy qr.py)
+for _base in [_script_dir, _parent_dir, os.getcwd()]:
+    for _sub in ["cogs/commands", "bot/cogs/commands"]:
+        _dep_qr = os.path.join(_base, _sub, "qr.py")
+        if os.path.isfile(_dep_qr):
+            try:
+                os.remove(_dep_qr)
+                print(f"\033[33m◈ Cleanup: Removed deprecated file {_dep_qr}\033[0m")
+            except Exception:
+                pass
+
 import aiohttp
 import discord
 from discord import Spotify
