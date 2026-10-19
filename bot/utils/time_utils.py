@@ -141,9 +141,16 @@ def install_ist_print_hook():
             # Do not prefix empty lines, separator lines, banner art, or lines that already have a timestamp
             if clean and not (set(clean) <= {'*', '-', '=', '#', '_', ' '}) and '██' not in clean and not _TS_REGEX.match(clean):
                 ts = datetime.now(IST).strftime("%Y-%m-%d %I:%M:%S %p IST")
-                ts_prefix = f"\x1b[36m[{ts}]\x1b[0m "
-                args = (ts_prefix + first_arg,) + args[1:]
-        return _orig_print(*args, **kwargs)
+        try:
+            return _orig_print(*args, **kwargs)
+        except UnicodeEncodeError:
+            target = kwargs.get("file") or sys.stdout
+            enc = getattr(target, "encoding", "ascii") or "ascii"
+            safe_args = [
+                str(a).encode(enc, errors="replace").decode(enc)
+                for a in args
+            ]
+            return _orig_print(*safe_args, **kwargs)
 
     zyuna_print._zyuna_hooked = True
     builtins.print = zyuna_print
