@@ -159,11 +159,7 @@ try:
     from bot.utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
     from bot.utils.sync_emojis import run_sync
 except (ImportError, ModuleNotFoundError):
-    try:
-        from core import Context, zyuna
-    except ImportError:
-        from core import Context, zyrox
-        zyuna = zyrox
+    from core import Context, zyuna
     from core.Cog import Cog
     from utils.Tools import *
     from utils.config import *

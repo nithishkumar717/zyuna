@@ -12,7 +12,7 @@
 # ╚══════════════════════════════════════════════════════════════════╝
 
 import discord
-from utils.emoji import CODEBASE, LOADING, SYSTEM, THUNDER, ZYROX_CODE, ZYROX_COMMAND, ZYROX_GLOBAL, ZYROX_OWNER, ZYROX_SEARCH
+from utils.emoji import CODEBASE, LOADING, SYSTEM, THUNDER, ZYUNA_CODE, ZYUNA_COMMAND, ZYUNA_GLOBAL, ZYUNA_OWNER, ZYUNA_SEARCH
 import psutil
 import sys
 import os
@@ -59,26 +59,26 @@ def create_stats_content(stats_data, selected):
             f"**{SYSTEM} Hardware**\n"
             f"Cpu Usage: **{stats_data['cpu']}%**\n"
             f"Ram Usage: **{stats_data['ram']}%**\n\n"
-            f"**{ZYROX_CODE} Software**\n"
+            f"**{ZYUNA_CODE} Software**\n"
             f"Python: **{sys.version_info.major}.{sys.version_info.minor}**\n"
             f"Discord.py: **{discord.__version__}**"
         ),
         "General Info": (
             f"**Uptime**: `{stats_data['uptime']}`\n\n"
-            f"**{ZYROX_GLOBAL} Server Stats**\n"
+            f"**{ZYUNA_GLOBAL} Server Stats**\n"
             f"Guilds: **{stats_data['guilds']}**\n"
             f"Users: **{stats_data['users']}**\n\n"
-            f"**{ZYROX_COMMAND} Commands Stats**\n"
+            f"**{ZYUNA_COMMAND} Commands Stats**\n"
             f"Total Commands: **{stats_data['all_cmds']}**\n"
             f"Slash Commands: **{stats_data['slash_cmds']}**"
         ),
         "Team Info": (
             "Thanks to the team behind Zyuna ❤️.\n\n"
-            f"**{ZYROX_OWNER} Main Owner**\n"
+            f"**{ZYUNA_OWNER} Main Owner**\n"
             "[01]. [Nerd X Live](https://discord.com/users/1048900823314354197)"
         ),
         "Code Info": (
-            f"**{ZYROX_SEARCH} Codebase Overview**\n\n"
+            f"**{ZYUNA_SEARCH} Codebase Overview**\n\n"
             f"Files: **{stats_data['files']}**\n"
             f"Lines: **{stats_data['lines']}**\n"
             f"Words: **{stats_data['words']}**"
@@ -108,7 +108,7 @@ class StatsView(LayoutView):
                 ),
                 discord.SelectOption(
                     label="General Info",
-                    emoji=ZYROX_GLOBAL,
+                    emoji=ZYUNA_GLOBAL,
                     description="General info",
                 ),
                 discord.SelectOption(
@@ -118,7 +118,7 @@ class StatsView(LayoutView):
                 ),
                 discord.SelectOption(
                     label="Code Info",
-                    emoji=ZYROX_SEARCH,
+                    emoji=ZYUNA_SEARCH,
                     description="Code stats",
                 ),
             ],

@@ -13,7 +13,7 @@
 
 import asyncio
 import discord
-from utils.emoji import CROSS, TICK, ZWARNING, ZYROXCONNECTION, ZYROXLINKS
+from utils.emoji import CROSS, TICK, ZWARNING, ZYUNACONNECTION, ZYUNALINKS
 from discord.ext import commands, tasks
 from discord.utils import get
 import datetime
@@ -391,8 +391,8 @@ class General(commands.Cog):
       bot_id = self.client.user.id if self.client.user else "1525728642913669260"
       invite_text = (
           f"```Empower your server with blazing-fast features and 24/7 support!```\n"
-          f"{ZYROXLINKS} **Quick Actions**\n"
+          f"{ZYUNALINKS} **Quick Actions**\n"
           f">>> **[Invite {BotName}](https://discord.com/oauth2/authorize?client_id={bot_id}&permissions=8&integration_type=0&scope=bot+applications.commands)**\n"
           f"**[Support Server]({SUPPORT_SERVER_URL})**"
       )
-      await ctx.send(view=CV2(f"{ZYROXCONNECTION} {BotName} Integration Hub!", invite_text))
+      await ctx.send(view=CV2(f"{ZYUNACONNECTION} {BotName} Integration Hub!", invite_text))

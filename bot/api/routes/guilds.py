@@ -35,7 +35,7 @@ import json
 import os
 
 if TYPE_CHECKING:
-    from core.zyuna import zyuna, zyrox
+    from core.zyuna import zyuna
 
 router = APIRouter()
 

@@ -20,7 +20,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 if TYPE_CHECKING:
-    from core.zyuna import zyuna, zyrox
+    from core.zyuna import zyuna
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["1000 per minute"])

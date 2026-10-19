@@ -25,7 +25,7 @@ from utils import Paginator, DescriptionEmbedPaginator, FieldPagePaginator, Text
 from utils.Tools import *
 from utils.config import OWNER_IDS, BOT_OWNER_IDS
 from utils.emoji import BOOSTS, DISCORD_BADGE_EMOJIS, LOADINGRED, NITRO_BOOST, TICK, ZWARNING
-from core import Cog, zyrox, Context
+from core import Cog, zyuna, Context
 import sqlite3
 import os
 import requests

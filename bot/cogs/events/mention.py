@@ -14,7 +14,7 @@
 from utils import getConfig
 from utils.config import BotName, serverLink
 import discord
-from utils.emoji import ARROWRED, CODEBASE, HEART3, INDEX, ZYROXLINKS
+from utils.emoji import ARROWRED, CODEBASE, HEART3, INDEX, ZYUNALINKS
 from discord.ui import LayoutView, TextDisplay, Separator, Container, ActionRow, Select
 from discord.ext import commands
 from utils.Tools import get_ignore_data
@@ -43,7 +43,7 @@ class MentionSelectView(LayoutView):
                 ),
                 discord.SelectOption(
                     label="Links",
-                    emoji=ZYROXLINKS,
+                    emoji=ZYUNALINKS,
                     description="Useful bot links",
                 ),
             ],

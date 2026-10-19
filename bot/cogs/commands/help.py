@@ -18,7 +18,7 @@ from contextlib import suppress
 from discord.ext import commands
 
 try:
-    from bot.core import Context, zyuna, zyrox
+    from bot.core import Context, zyuna
     from bot.core.Cog import Cog
     from bot.utils.Tools import getConfig, ignore_check, blacklist_check
     from bot.utils.emoji import LOADINGRED, TICK, CROSS
@@ -26,7 +26,7 @@ try:
     from bot.utils.cv2 import CV2, CV2Embed
     from bot.utils import help as vhelp
 except (ImportError, ModuleNotFoundError):
-    from core import Context, zyuna, zyrox
+    from core import Context, zyuna
     from core.Cog import Cog
     from utils.Tools import getConfig, ignore_check, blacklist_check
     from utils.emoji import LOADINGRED, TICK, CROSS

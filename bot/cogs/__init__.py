@@ -13,9 +13,9 @@
 
 from __future__ import annotations
 try:
-    from bot.core import zyuna, zyrox
+    from bot.core import zyuna
 except (ImportError, ModuleNotFoundError):
-    from core import zyuna, zyrox
+    from core import zyuna
 from colorama import Fore, Style, init
 
 

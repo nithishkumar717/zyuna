@@ -17,14 +17,14 @@ import aiosqlite
 import asyncio
 import logging
 from discord.ext import commands
-from core import zyrox, Cog
+from core import zyuna, Cog
 from utils.config import *
 
 DATABASE_PATH = 'db/autorole.db'
 logger = logging.getLogger(__name__)
 
 class Autorole2(Cog):
-    def __init__(self, bot: zyrox):
+    def __init__(self, bot: zyuna):
         self.bot = bot
         self.headers = {"Authorization": f"Bot {self.bot.http.token}"}
 

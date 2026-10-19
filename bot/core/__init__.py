@@ -11,8 +11,8 @@
 # ║                                                                  ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-from .zyuna import zyuna, zyrox, setup_bot
+from .zyuna import zyuna, setup_bot
 from .Context import Context
 from .Cog import Cog
 
-__all__ = ["zyuna", "zyrox", "setup_bot", "Context", "Cog"]
+__all__ = ["zyuna", "setup_bot", "Context", "Cog"]

@@ -29,7 +29,7 @@ from typing import *
 from utils import *
 from utils.config import BotName, serverLink
 from utils import Paginator, DescriptionEmbedPaginator, FieldPagePaginator, TextPaginator
-from core import Cog, zyrox, Context
+from core import Cog, zyuna, Context
 from typing import Optional
 import aiosqlite 
 import asyncio

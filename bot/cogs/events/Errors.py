@@ -16,11 +16,11 @@ import json
 import aiosqlite
 from discord.ext import commands
 from utils.config import serverLink
-from core import zyrox, Cog, Context
+from core import zyuna, Cog, Context
 from utils.Tools import get_ignore_data
 
 class Errors(Cog):
-  def __init__(self, client: zyrox):
+  def __init__(self, client: zyuna):
     self.client = client
 
   @commands.Cog.listener()

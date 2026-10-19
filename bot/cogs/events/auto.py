@@ -14,18 +14,18 @@
 import discord
 from discord.utils import *
 try:
-    from bot.core import zyrox, Cog
+    from bot.core import zyuna, Cog
     from bot.utils.Tools import *
     from bot.utils.config import BotName, BRAND_NAME, serverLink, websiteLink
 except (ImportError, ModuleNotFoundError):
-    from core import zyrox, Cog
+    from core import zyuna, Cog
     from utils.Tools import *
     from utils.config import BotName, BRAND_NAME, serverLink, websiteLink
 from discord.ext import commands
 from discord.ui import Button, View
 
 class Autorole(Cog):
-    def __init__(self, bot: zyrox):
+    def __init__(self, bot: zyuna):
        self.bot = bot
 
     @commands.Cog.listener(name="on_guild_join")

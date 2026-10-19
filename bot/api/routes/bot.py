@@ -19,7 +19,7 @@ from utils.config import *
 
 
 if TYPE_CHECKING:
-    from core.zyuna import zyuna, zyrox
+    from core.zyuna import zyuna
 
 router = APIRouter()
 

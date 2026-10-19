@@ -152,6 +152,4 @@ def setup_bot():
     bot = zyuna(intents=intents)
     return bot
 
-# Aliases for backward compatibility
-zyrox = zyuna
 Bot = zyuna

@@ -14,7 +14,7 @@
 from discord.ext import commands, tasks
 from discord import *
 import discord
-from utils.emoji import BOOST, ICONS_WARNING, INFO, MENTION, PREMIUM, TICK, TIME, TIMER_ALT1, U_ADMIN, ZDIL, ZHUMAN, ZYROXHAMMER, ZYROXSYS
+from utils.emoji import BOOST, ICONS_WARNING, INFO, MENTION, PREMIUM, TICK, TIME, TIMER_ALT1, U_ADMIN, ZDIL, ZHUMAN, ZYUNAHAMMER, ZYUNASYS
 import aiosqlite
 from typing import Optional
 from datetime import datetime, timedelta
@@ -142,7 +142,7 @@ class TimeSelect(Select):
             await log_channel.send("<#1396794297386532978>", view=embed)
 
         embed = CV2Embed(
-            description=f"**Added Global No Prefix**:\n{ZHUMAN} User: **{self.user.mention}**\n{MENTION} User Mention: {self.user.mention}\n{ZYROXSYS} User ID: {self.user.id}\n\n__**Additional Info**__:\n{ZYROXHAMMER} Added By: **{self.author.display_name}**\n{TIME} Expiry Time: {expiry_text}\n{BOOST} Timestamp: {expiry_timestamp}",
+            description=f"**Added Global No Prefix**:\n{ZHUMAN} User: **{self.user.mention}**\n{MENTION} User Mention: {self.user.mention}\n{ZYUNASYS} User ID: {self.user.id}\n\n__**Additional Info**__:\n{ZYUNAHAMMER} Added By: **{self.author.display_name}**\n{TIME} Expiry Time: {expiry_text}\n{BOOST} Timestamp: {expiry_timestamp}",
             color=0xFF0000,
         )
         embed.set_author(

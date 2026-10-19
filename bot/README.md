@@ -41,7 +41,7 @@ bot/
 │   ├── commands/          All slash & prefix command modules
 │   ├── events/            General Discord event listeners
 │   ├── moderation/        Moderation action modules
-│   └── zyrox/             Core Zyuna feature cogs
+│   └── zyuna/             Core Zyuna feature cogs
 ├── core/                  Bot client, context, cog base classes
 ├── games/                 Standalone game logic + button views
 ├── utils/                 Emoji, tools, sync, Cloudflare tunnel

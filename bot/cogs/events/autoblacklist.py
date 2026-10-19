@@ -13,14 +13,14 @@
 
 import discord
 from utils.emoji import ZWARNING
-from core import zyrox, Cog
+from core import zyuna, Cog
 from discord.ext import commands
 import aiosqlite
 from datetime import datetime, timedelta
 from utils.config import serverLink
 
 class AutoBlacklist(Cog):
-    def __init__(self, client: zyrox):
+    def __init__(self, client: zyuna):
         self.client = client
         self.spam_cd_mapping = commands.CooldownMapping.from_cooldown(5, 5, commands.BucketType.member)
         self.spam_command_mapping = commands.CooldownMapping.from_cooldown(6, 10, commands.BucketType.member)

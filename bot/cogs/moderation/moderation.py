@@ -20,7 +20,7 @@ import typing
 import typing as t
 from typing import *
 from utils.Tools import *
-from core import Cog, zyrox, Context
+from core import Cog, zyuna, Context
 from discord.ext.commands import Converter
 from discord.ext import commands, tasks
 from discord.ui import Button, View

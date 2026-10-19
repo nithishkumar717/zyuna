@@ -21,7 +21,7 @@ from discord.ui import Button, View, LayoutView, TextDisplay, Separator, Contain
 import wavelink
 from wavelink.enums import TrackSource
 from utils import Paginator, DescriptionEmbedPaginator
-from core import Cog, zyrox, Context
+from core import Cog, zyuna, Context
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 import aiohttp
@@ -334,7 +334,7 @@ class MusicControlView(LayoutView):
 
 
 class Music(commands.Cog):
-    def __init__(self, client: zyrox):
+    def __init__(self, client: zyuna):
         self.client = client
         self.client.loop.create_task(self.connect_nodes())
         self.client.loop.create_task(self.monitor_inactivity())
