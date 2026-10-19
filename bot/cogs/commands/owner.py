@@ -298,7 +298,49 @@ class Owner(commands.Cog):
                 break
 
         if not repo_dir:
-            return await msg.edit(content="❌ | Could not locate `.git` repository folder.")
+            # Determine target folder for git init (root of repository)
+            target_dir = os.getcwd()
+            # If current_dir is in bot/cogs/commands, 3 levels up is repo root
+            bot_parent = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+            if os.path.isdir(os.path.join(bot_parent, "bot")):
+                target_dir = bot_parent
+            elif os.path.isdir(os.path.join(target_dir, "bot")):
+                target_dir = target_dir
+
+            await msg.edit(content="⚙️ | `.git` folder not found on server. Initializing and connecting to GitHub...")
+            try:
+                repo_url = "https://github.com/nithishkumar717/zyuna.git"
+                # 1. git init
+                proc1 = await asyncio.create_subprocess_exec("git", "init", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                await proc1.communicate()
+
+                # 2. git remote add/set-url origin
+                proc2 = await asyncio.create_subprocess_exec("git", "remote", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                remotes_out, _ = await proc2.communicate()
+                if "origin" in remotes_out.decode().split():
+                    proc_rem = await asyncio.create_subprocess_exec("git", "remote", "set-url", "origin", repo_url, cwd=target_dir)
+                else:
+                    proc_rem = await asyncio.create_subprocess_exec("git", "remote", "add", "origin", repo_url, cwd=target_dir)
+                await proc_rem.communicate()
+
+                # 3. git fetch origin main
+                proc3 = await asyncio.create_subprocess_exec("git", "fetch", "origin", "main", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                await proc3.communicate()
+
+                # 4. git reset --hard origin/main
+                proc4 = await asyncio.create_subprocess_exec("git", "reset", "--hard", "origin/main", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                await proc4.communicate()
+
+                # 5. git branch -M main & set upstream
+                proc5 = await asyncio.create_subprocess_exec("git", "branch", "-M", "main", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                await proc5.communicate()
+
+                proc6 = await asyncio.create_subprocess_exec("git", "branch", "--set-upstream-to=origin/main", "main", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                await proc6.communicate()
+
+                repo_dir = target_dir
+            except Exception as init_err:
+                return await msg.edit(content=f"❌ | Could not initialize git repository: `{init_err}`")
 
         try:
             process = await asyncio.create_subprocess_exec(

@@ -78,6 +78,8 @@ import discord
 from discord import Spotify
 from discord.ext import commands, tasks
 
+REPO_URL = "https://github.com/nithishkumar717/zyuna.git"
+
 def _find_git_dir():
     check_paths = [
         os.getcwd(),
@@ -89,10 +91,42 @@ def _find_git_dir():
             return path
     return None
 
+def _ensure_git_repo():
+    git_dir = _find_git_dir()
+    if git_dir:
+        return git_dir
+
+    # Target folder: parent directory if script is inside 'bot', or current working dir
+    target = os.getcwd()
+    if os.path.basename(_script_dir) == "bot":
+        target = os.path.dirname(_script_dir)
+    elif os.path.isdir(os.path.join(target, "bot")):
+        target = target
+
+    try:
+        print(f"\033[36m◈ [Git Setup] Initializing git in {target} and connecting to {REPO_URL}...\033[0m")
+        subprocess.run(["git", "init"], cwd=target, capture_output=True, text=True, check=True)
+        remotes_out = subprocess.run(["git", "remote"], cwd=target, capture_output=True, text=True).stdout
+        if "origin" in remotes_out.split():
+            subprocess.run(["git", "remote", "set-url", "origin", REPO_URL], cwd=target, capture_output=True, text=True)
+        else:
+            subprocess.run(["git", "remote", "add", "origin", REPO_URL], cwd=target, capture_output=True, text=True)
+        
+        # Fetch remote branches
+        subprocess.run(["git", "fetch", "origin", "main"], cwd=target, capture_output=True, text=True, check=True)
+        subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=target, capture_output=True, text=True, check=True)
+        subprocess.run(["git", "branch", "-M", "main"], cwd=target, capture_output=True, text=True)
+        subprocess.run(["git", "branch", "--set-upstream-to=origin/main", "main"], cwd=target, capture_output=True, text=True)
+        print(f"\033[32m✔ [Git Setup] Successfully connected repository to GitHub main branch!\033[0m")
+        return target
+    except Exception as e:
+        print(f"\033[33m◈ [Git Setup] Auto-init note: {e}\033[0m")
+        return None
+
 def _auto_git_pull():
     """Automatically pulls the latest code from GitHub on startup."""
     try:
-        git_dir = _find_git_dir()
+        git_dir = _ensure_git_repo()
         if git_dir:
             result = subprocess.run(
                 ["git", "pull", "origin", "main"],
@@ -111,7 +145,7 @@ def _auto_git_pull():
                 err = result.stderr.strip()
                 print(f"\033[33m◈ Auto-Update note: Git pull exited with code {result.returncode}: {err or out}\033[0m")
         else:
-            print("\033[33m◈ Auto-Update note: No .git directory found, skipping startup pull.\033[0m")
+            print("\033[33m◈ Auto-Update note: No git repository could be established, skipping startup pull.\033[0m")
     except Exception as e:
         print(f"\033[33m◈ Auto-Update note: {e}\033[0m")
 
