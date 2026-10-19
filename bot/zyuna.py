@@ -11,7 +11,7 @@ from datetime import datetime
 import random
 import time
 
-# Ensure current working dir, script dir, and 'bot' subfolders are in sys.path
+# Ensure current working dir, script dir, and subfolders are in sys.path
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 for _p in [
     _script_dir,
@@ -21,6 +21,32 @@ for _p in [
 ]:
     if _p and os.path.exists(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
+
+# If core is not yet found, check for zip archives to auto-extract or search subdirectories
+if not any(os.path.isdir(os.path.join(p, "core")) for p in sys.path if isinstance(p, str) and os.path.isdir(p)):
+    import zipfile
+    for _f in os.listdir(os.getcwd()):
+        if _f.endswith(".zip") and not _f.startswith("."):
+            try:
+                print(f"◈ [Startup] Found archive '{_f}', auto-extracting...")
+                with zipfile.ZipFile(_f, "r") as _z:
+                    _z.extractall(os.getcwd())
+                print(f"✔ [Startup] Successfully extracted '{_f}'!")
+                break
+            except Exception as _e:
+                print(f"✖ [Startup] Could not extract '{_f}': {_e}")
+
+    # Re-scan paths
+    for _root, _dirs, _ in os.walk(os.getcwd()):
+        if "core" in _dirs and os.path.isfile(os.path.join(_root, "core", "__init__.py")):
+            if _root not in sys.path:
+                sys.path.insert(0, _root)
+            break
+
+if not any(os.path.isdir(os.path.join(p, "core")) for p in sys.path if isinstance(p, str) and os.path.isdir(p)):
+    print(f"✖ [Error] Could not locate 'core' directory!")
+    print(f"   Working Directory: {os.getcwd()}")
+    print(f"   Files in directory: {os.listdir(os.getcwd())[:20]}")
 
 import aiohttp
 import discord
