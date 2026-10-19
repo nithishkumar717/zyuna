@@ -1,5 +1,6 @@
 
 
+import sys
 import os
 import subprocess
 # os.system("")
@@ -9,6 +10,17 @@ from threading import Thread
 from datetime import datetime
 import random
 import time
+
+# Ensure current working dir, script dir, and 'bot' subfolders are in sys.path
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+for _p in [
+    _script_dir,
+    os.getcwd(),
+    os.path.join(_script_dir, "bot"),
+    os.path.join(os.getcwd(), "bot"),
+]:
+    if _p and os.path.exists(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import aiohttp
 import discord

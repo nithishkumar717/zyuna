@@ -61,7 +61,6 @@ from .commands.status import Status
 from .commands.np import NoPrefix
 from .commands.filters import FilterCog
 from .commands.owner2 import Global
-from .commands.qr import QR
 from .commands.vanityroles import VanityRoles
 from .commands.reactionroles import ReactionRoles 
 from .commands.messages import Messages
@@ -196,7 +195,7 @@ async def setup(bot: zyrox):
         AntiChannelCreate, AntiChannelDelete, AntiChannelUpdate, AntiEveryone, AntiGuildUpdate,
         AntiIntegration, AntiKick, AntiPrune, AntiRoleCreate, AntiRoleDelete,
         AntiRoleUpdate, AntiWebhookUpdate, AntiWebhookCreate, 
-        AntiWebhookDelete, AntiSpam, AntiCaps, AntiLink, AntiInvite, AntiMassMention, Stats, Status, NoPrefix, FilterCog, AutoReaction, AutoReactListener, Ban, Unban, Mute, Unmute, Lock, Unlock, Hide, Unhide, Kick, Warn, Role, Message, Moderation, TopCheck, Snipe, Global, QR, VanityRoles, ReactionRoles, Messages, TranslateCog, FastGreet, Jail, inviteTracker,Counting,AI
+        AntiWebhookDelete, AntiSpam, AntiCaps, AntiLink, AntiInvite, AntiMassMention, Stats, Status, NoPrefix, FilterCog, AutoReaction, AutoReactListener, Ban, Unban, Mute, Unmute, Lock, Unlock, Hide, Unhide, Kick, Warn, Role, Message, Moderation, TopCheck, Snipe, Global, VanityRoles, ReactionRoles, Messages, TranslateCog, FastGreet, Jail, inviteTracker,Counting,AI
     ]
 
 
@@ -240,7 +239,6 @@ async def setup(bot: zyrox):
  # await bot.add_cog(Map(bot))
   await bot.add_cog(TicketCog(bot))
   await bot.add_cog(Logging(bot))
-  await bot.add_cog(QR(bot))
   await bot.add_cog(VanityRoles(bot))
   await bot.add_cog(ReactionRoles(bot))
   await bot.add_cog(Messages(bot))
