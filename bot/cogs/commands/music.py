@@ -718,7 +718,7 @@ class MusicControlView(LayoutView):
             pass
         status = "Disabled" if is_auto else "Enabled"
         emoji = "<:disable:1562115051215659078>" if is_auto else "<a:enable:1562111115662598295>"
-        await interaction.response.send_message(f"{emoji} Autoplay **{status}**.", ephemeral=True)
+        await interaction.response.send_message(f"{emoji} Smart ML Autoplay **{status}**.", ephemeral=True)
 
     async def _cb_open_controls(self, interaction: discord.Interaction):
         if not await self.interaction_check(interaction): return
@@ -1285,7 +1285,6 @@ class Music(commands.Cog):
 
                     if data.get("autoplay", True):
                         vc.autoplay = wavelink.AutoPlayMode.disabled
-                        vc.smart_autoplay = False
                         vc.smart_autoplay = True
                     else:
                         vc.autoplay = wavelink.AutoPlayMode.disabled
@@ -1601,7 +1600,8 @@ class Music(commands.Cog):
         vc = ctx.voice_client
         if vc is None:
             vc = await ctx.author.voice.channel.connect(cls=wavelink.Player)
-            vc.autoplay = wavelink.AutoPlayMode.enabled
+            vc.autoplay = wavelink.AutoPlayMode.disabled
+            vc.smart_autoplay = True
         vc.ctx = ctx
         
         
@@ -1633,6 +1633,46 @@ class Music(commands.Cog):
                 await self.display_player_embed(vc, track, ctx)
         else:
             track = tracks[0]
+            if len(tracks) > 1:
+                candidates = []
+                for t in tracks:
+                    candidates.append({
+                        "title": t.title,
+                        "uploader": t.author,
+                        "artist": t.author,
+                        "duration": (t.length / 1000.0) if hasattr(t, "length") and t.length else 0,
+                        "url": getattr(t, "uri", ""),
+                        "id": getattr(t, "identifier", ""),
+                        "source": getattr(t, "source", "youtube"),
+                        "playable": t,
+                    })
+                ranked = self.search_ranker.rank_candidates(query, candidates)
+                if ranked:
+                    top_candidate = ranked[0][1]
+                    track = top_candidate.get("playable", track)
+
+            session = self.get_session(ctx.guild.id)
+            session.set_hard_constraints_from_query(query)
+            track_dict = {
+                "title": track.title,
+                "uploader": track.author,
+                "artist": track.author,
+                "duration": (track.length / 1000.0) if hasattr(track, "length") and track.length else 0,
+                "url": getattr(track, "uri", ""),
+                "id": getattr(track, "identifier", ""),
+            }
+            session.record_played_track(track_dict, is_manual=True)
+            self.client.loop.create_task(self.precompute_ai_suggestions(ctx.guild.id, track_dict))
+            self.client.loop.create_task(self.telemetry.log_event(
+                event_type=MusicTelemetryEvent.PLAY_STARTED,
+                guild_id=ctx.guild.id,
+                user_id=ctx.author.id,
+                track_id=getattr(track, "identifier", ""),
+                title=getattr(track, "title", ""),
+                artist=getattr(track, "author", ""),
+                track_duration=track_dict["duration"],
+            ))
+
             await vc.queue.put_wait(track)
             await ctx.send(view=CV2(f"{ZPLUS}   Added [{track.title}]({serverLink}) to the queue."))
             if not vc.playing:
@@ -1662,6 +1702,46 @@ class Music(commands.Cog):
                     return
 
                 track = search_results[0]
+                if len(search_results) > 1:
+                    candidates = []
+                    for t in search_results:
+                        candidates.append({
+                            "title": t.title,
+                            "uploader": t.author,
+                            "artist": t.author,
+                            "duration": (t.length / 1000.0) if hasattr(t, "length") and t.length else 0,
+                            "url": getattr(t, "uri", ""),
+                            "id": getattr(t, "identifier", ""),
+                            "source": getattr(t, "source", "youtube"),
+                            "playable": t,
+                        })
+                    ranked = self.search_ranker.rank_candidates(search_query, candidates, target_artist=author)
+                    if ranked:
+                        top_candidate = ranked[0][1]
+                        track = top_candidate.get("playable", track)
+
+                session = self.get_session(ctx.guild.id)
+                session.set_hard_constraints_from_query(search_query)
+                track_dict = {
+                    "title": track.title,
+                    "uploader": track.author,
+                    "artist": track.author,
+                    "duration": (track.length / 1000.0) if hasattr(track, "length") and track.length else 0,
+                    "url": getattr(track, "uri", ""),
+                    "id": getattr(track, "identifier", ""),
+                }
+                session.record_played_track(track_dict, is_manual=True)
+                self.client.loop.create_task(self.precompute_ai_suggestions(ctx.guild.id, track_dict))
+                self.client.loop.create_task(self.telemetry.log_event(
+                    event_type=MusicTelemetryEvent.PLAY_STARTED,
+                    guild_id=ctx.guild.id,
+                    user_id=ctx.author.id,
+                    track_id=getattr(track, "identifier", ""),
+                    title=getattr(track, "title", ""),
+                    artist=getattr(track, "author", ""),
+                    track_duration=track_dict["duration"],
+                ))
+
                 await vc.queue.put_wait(track)
                 await ctx.send(view=CV2(f"{ZPLUS}  Added [{track.title}]({serverLink}) to the queue."))
                 if not vc.playing:
@@ -1801,12 +1881,12 @@ class Music(commands.Cog):
                 thumbnail_url=thumb_url,
                 platform=platform
             )
-            is_autoplay = (vc.autoplay == wavelink.AutoPlayMode.enabled)
+            is_autoplay = getattr(vc, "smart_autoplay", True)
             view = MusicControlView(vc, ctx, track=track, autoplay=is_autoplay, has_card=True)
             await ctx.send(file=card_file, view=view)
         except Exception as e:
             print(f"[Music] nowplaying card error: {e}")
-            is_autoplay = (vc.autoplay == wavelink.AutoPlayMode.enabled)
+            is_autoplay = getattr(vc, "smart_autoplay", True)
             view = MusicControlView(vc, ctx, track=track, autoplay=is_autoplay, has_card=False)
             await ctx.send(view=view)
 
@@ -1825,10 +1905,11 @@ class Music(commands.Cog):
             return
 
         if vc:
-            vc.autoplay = (
-                wavelink.AutoPlayMode.enabled if vc.autoplay != wavelink.AutoPlayMode.enabled else wavelink.AutoPlayMode.disabled
-            )
-            await ctx.send(view=CV2(f"{TICK} Autoplay {'enabled' if vc.autoplay == wavelink.AutoPlayMode.enabled else 'disabled'} by {ctx.author.mention}."))
+            current_val = getattr(vc, "smart_autoplay", True)
+            vc.smart_autoplay = not current_val
+            vc.autoplay = wavelink.AutoPlayMode.disabled
+            status = "enabled" if vc.smart_autoplay else "disabled"
+            await ctx.send(view=CV2(f"{TICK} Smart ML Autoplay **{status}** by {ctx.author.mention}."))
 
     @commands.command(name="loop", usage="loop", help="Toggles loop mode.")
     @blacklist_check()
@@ -1907,14 +1988,23 @@ class Music(commands.Cog):
             await ctx.send(view=CV2(f"{WARNING} You need to be in the same voice channel as me to use this command."))
             return
 
-        if vc.autoplay == wavelink.AutoPlayMode.enabled:
+        if vc.current:
+            session = self.get_session(ctx.guild.id)
+            session.record_skip(vc.current.title)
+            self.client.loop.create_task(self.telemetry.log_event(
+                event_type=MusicTelemetryEvent.SKIP,
+                guild_id=ctx.guild.id,
+                user_id=ctx.author.id,
+                track_id=getattr(vc.current, "identifier", ""),
+                title=getattr(vc.current, "title", ""),
+                artist=getattr(vc.current, "author", ""),
+                track_duration=(vc.current.length / 1000.0) if getattr(vc.current, "length", None) else 0,
+                played_seconds=(vc.position / 1000.0) if getattr(vc, "position", None) else 0,
+            ))
+
+        if getattr(vc, "smart_autoplay", True) or not vc.queue.is_empty:
             await vc.stop()
             return await ctx.send(view=CV2(f"Skipped by {ctx.author.mention}."))
-
-
-        if vc and vc.playing and not vc.queue.is_empty:
-            await vc.stop()
-            await ctx.send(view=CV2(f"Skipped by {ctx.author.mention}."))
         else:
             await ctx.send(view=CV2(f"{WARNING} No song is playing or in the queue to skip."))
 
@@ -2270,7 +2360,7 @@ class Music(commands.Cog):
             except Exception:
                 pass
 
-        if not player.queue and player.queue.mode != wavelink.QueueMode.loop and player.autoplay != wavelink.AutoPlayMode.enabled:
+        if not player.queue and player.queue.mode != wavelink.QueueMode.loop and not getattr(player, "smart_autoplay", True):
             self.remove_session(player.guild.id)
         else:
             self.update_session(player)
