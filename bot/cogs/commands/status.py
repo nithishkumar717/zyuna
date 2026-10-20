@@ -176,7 +176,6 @@ class Status(commands.Cog):
             "gateway": gateway_ms,
             "api": api_ms,
             "sqlite": sqlite_ms,
-            "mongo": "N/A",
             "uptime": uptime,
         }
 
@@ -197,7 +196,6 @@ class Status(commands.Cog):
                 f"**Gateway:** `{format_ms(metrics['gateway'])}`",
                 f"**API:** `{format_ms(metrics['api'])}`",
                 f"**SQLite:** `{format_ms(metrics['sqlite'])}`",
-                f"**MongoDB:** `{format_ms(metrics['mongo'])}`",
                 f"**System Uptime:** `{metrics['uptime']}`",
             )
         )
