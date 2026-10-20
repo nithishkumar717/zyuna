@@ -12,29 +12,25 @@
 # ╚══════════════════════════════════════════════════════════════════╝
 
 import discord
-import asyncio
 from difflib import get_close_matches
-from contextlib import suppress
 from discord.ext import commands
 
 try:
     from bot.core import Context, zyuna
     from bot.core.Cog import Cog
     from bot.utils.Tools import getConfig, ignore_check, blacklist_check
-    from bot.utils.emoji import LOADINGRED, TICK, CROSS
-    from bot.utils.config import serverLink, websiteLink, BotName, BRAND_NAME
-    from bot.utils.cv2 import CV2, CV2Embed
+    from bot.utils.config import serverLink, BRAND_NAME
+    from bot.utils.cv2 import CV2Embed
     from bot.utils import help as vhelp
 except (ImportError, ModuleNotFoundError):
     from core import Context, zyuna
     from core.Cog import Cog
     from utils.Tools import getConfig, ignore_check, blacklist_check
-    from utils.emoji import LOADINGRED, TICK, CROSS
-    from utils.config import serverLink, websiteLink, BotName, BRAND_NAME
-    from utils.cv2 import CV2, CV2Embed
+    from utils.config import serverLink, BRAND_NAME
+    from utils.cv2 import CV2Embed
     from utils import help as vhelp
 
-ACCENT_COLOR = 0xFF2A4D
+ACCENT_COLOR = 0xC6A46A
 
 
 class HelpCommand(commands.HelpCommand):
@@ -97,55 +93,46 @@ class HelpCommand(commands.HelpCommand):
             await self.send_ignore_message(ctx, "command")
             return
 
-        # Smooth Loading Indicator
-        loading_embed = CV2(f"{LOADINGRED} Initializing {BRAND_NAME} Command Center...")
-        loading_msg = await ctx.reply(view=loading_embed)
-
-        await asyncio.sleep(0.3)
-        with suppress(discord.NotFound):
-            await loading_msg.delete()
-
-        # Telemetry & Configuration
+        # Keep the overview compact and respect users with a prefixless command mode.
         try:
             data = await getConfig(self.context.guild.id)
-            prefix = data.get("prefix", ">")
+            configured_prefix = data.get("prefix", ">")
         except Exception:
-            prefix = self.context.prefix or ">"
+            configured_prefix = ">"
+
+        prefix = self.context.prefix if self.context.prefix is not None else configured_prefix
+        prefix = prefix or ""
+        prefix_label = f"`{prefix}`" if prefix else "`no prefix required`"
 
         total_commands = len(set(self.context.bot.walk_commands()))
         active_cogs = len(self.context.bot.cogs)
         latency_ms = round(self.context.bot.latency * 1000)
 
-        # High-Aesthetic Home Embed Card
         embed = CV2Embed(
-            title=f"# ✨ {BRAND_NAME} System Operations • Command Center",
+            title=f"# {BRAND_NAME}",
             description=(
-                f"> High-performance Discord architecture featuring studio-grade audio playback, "
-                f"audio FX DSP filtering, rich embed creation, social alerts, chat safety, and real-time telemetry.\n\n"
-                f"### 📊 System Telemetry\n"
-                f"• **Prefix:** `{prefix}` | **Version:** `v7.02 Core` | **Latency:** `{latency_ms}ms`\n"
-                f"• **Commands Available:** `{total_commands}` | **Active Modules:** `{active_cogs} Systems`\n"
-                f"• **Architecture:** `Discord Components V2 (CV2)` | **Cluster:** `Operational`\n\n"
-                f"### 🧭 Module Directory\n"
-                f"🎵 **`Studio Audio`** `»` Music Playback • Queue Engine • Continuous Playback • Spotify\n"
-                f"🎛️ **`Audio Filters`** `»` 15+ Real-Time DSP Presets (8D, Bassboost, Nightcore, Vaporwave)\n"
-                f"🛠️ **`Utilities & Tools`** `»` Rich Embed Builder • Hinglish Translator • Webhooks • Satellite Maps\n"
-                f"🔔 **`Social Alerts`** `»` Automated YouTube & Twitch Live Stream / Upload Notifications\n"
-                f"🛡️ **`Safety & Stats`** `»` Word Blacklists • Staff Dispatch • Message Leaderboards • Auto NP\n"
-                f"🎮 **`Mini-Games`** `»` Reflex Emoji Reaction Challenge\n"
-                f"📊 **`System Telemetry`** `»` Codebase Metrics • Resource Monitoring • Cluster Status\n\n"
-                f"### ⚡ Quick Deployment\n"
-                f"• `{prefix}play <query>` `»` *Play high-fidelity music from YouTube/Spotify*\n"
-                f"• `{prefix}filter` `»` *Apply 8D, Bassboost, or Nightcore DSP filters*\n"
-                f"• `{prefix}embed` `»` *Launch interactive CV2 embed builder*\n"
-                f"• `{prefix}hinglish <text>` `»` *Translate message between English/Hindi/Hinglish*\n"
-                f"• `{prefix}reaction` `»` *Start an emoji reflex reaction challenge*\n\n"
-                f"### 🕹️ Interactive Navigation\n"
-                f"Select any category from the dropdowns below or use the navigation buttons."
+                f"-# COMMAND DIRECTORY\n\n"
+                f"A refined guide to music, server tools, and community features.\n\n"
+                f"**Prefix** {prefix_label}  ·  **Commands** `{total_commands}`  ·  "
+                f"**Modules** `{active_cogs}`  ·  **Latency** `{latency_ms} ms`"
             ),
             color=ACCENT_COLOR
         )
-        embed.set_footer(text=f"Requested By {self.context.author.display_name} • Support: {serverLink}")
+        embed.add_field(
+            name="Start here",
+            value=(
+                f"`{prefix}play <song or URL>`  Play audio\n"
+                f"`{prefix}help <command>`  View usage and details\n"
+                f"`{prefix}filter`  Browse audio effects"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="Explore",
+            value=f"Choose a category below to browse commands. Use `{prefix}help <command>` for details.",
+            inline=False,
+        )
+        embed.set_footer(text=f"For {self.context.author.display_name} · Select a category below")
 
         view = vhelp.View(mapping=mapping, ctx=self.context, homeembed=embed, ui=2)
         await ctx.reply(view=view, mention_author=False)
@@ -158,11 +145,12 @@ class HelpCommand(commands.HelpCommand):
         if not check_blacklist or not check_ignore:
             return
 
-        sig = f"{self.context.prefix}{command.qualified_name} {command.signature}".strip()
+        prefix = self.context.prefix or ""
+        sig = f"{prefix}{command.qualified_name} {command.signature}".strip()
         help_desc = command.help or "No detailed description provided for this command."
 
         embed = CV2Embed(
-            title=f"# 📌 Command: {self.context.prefix}{command.qualified_name}",
+            title=f"# Command: {prefix}{command.qualified_name}",
             description=f"> {help_desc}",
             color=ACCENT_COLOR
         )
@@ -176,7 +164,7 @@ class HelpCommand(commands.HelpCommand):
             clean_cog = command.cog_name.strip("_").replace("_", " ").title()
             embed.add_field(name="Module Department", value=f"`{clean_cog}`", inline=True)
 
-        embed.set_footer(text="Parameters: <required> • [optional] | Do not type brackets when running commands.")
+        embed.set_footer(text="<required> · [optional] · Do not type the brackets")
         await self.context.reply(view=embed, mention_author=False)
 
     def get_command_signature(self, command: commands.Command) -> str:

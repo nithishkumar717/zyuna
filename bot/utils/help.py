@@ -14,7 +14,7 @@
 """
 Next-generation Discord Components V2 (CV2) interactive Help System.
 Features:
-- Premium Neon Crimson Accent Container styling
+- Refined accent Container styling
 - Organized Multi-Tier Select Menus (Core Systems vs Community & Extra Modules)
 - Fast-action Navigation Bar (Overview, Prev, Next, Close)
 - One-Click Quick Links (Invite Bot, Support Server)
@@ -27,10 +27,10 @@ import re
 from typing import List, Dict, Any, Optional
 from discord.ui import LayoutView, TextDisplay, Separator, ActionRow, Button, Select
 from utils.cv2 import build_container
-from utils.config import serverLink, websiteLink, BotName, BRAND_NAME
+from utils.config import serverLink, BRAND_NAME
 
-# Vibrant Neon Crimson Accent for Zyuna CV2 Container
-ACCENT_COLOR = 0xFF2A4D
+# Muted champagne accent for the CV2 help cards.
+ACCENT_COLOR = 0xC6A46A
 
 CORE_LABELS = {
     "Studio Audio",
@@ -75,7 +75,7 @@ def clean_command_block(raw_text: str, prefix: str = ">") -> str:
         if line_str.startswith("__**") or line_str.startswith("**__") or line_str.startswith("###"):
             flush_section()
             clean_title = re.sub(r"[_*#]", "", line_str).strip()
-            current_title = f"⚙️ {clean_title}" if not clean_title.startswith(("⚙️", "🛡️", "⚔️", "📌", "📜")) else clean_title
+            current_title = clean_title
         elif "," in line_str or "`" in line_str:
             parts = line_str.split(",")
             current_cmds.extend(parts)
@@ -123,7 +123,8 @@ class View(LayoutView):
         self.index = 0
         self.current_page = 0
         self.ui = ui
-        self.prefix = getattr(ctx, "prefix", ">") or ">"
+        context_prefix = getattr(ctx, "prefix", None)
+        self.prefix = ">" if context_prefix is None else context_prefix
 
         self.label_to_page: Dict[str, int] = {}
         self.core_options: List[discord.SelectOption] = []
@@ -169,10 +170,10 @@ class View(LayoutView):
         is_first = (self.index == 0)
         is_last = (self.index >= total - 1)
 
-        home_btn = Button(label="Overview", emoji="🏠", style=discord.ButtonStyle.primary, disabled=is_first)
-        prev_btn = Button(label="Prev", emoji="◀️", style=discord.ButtonStyle.secondary, disabled=is_first)
-        next_btn = Button(label="Next", emoji="▶️", style=discord.ButtonStyle.secondary, disabled=is_last)
-        close_btn = Button(label="Close", emoji="🗑️", style=discord.ButtonStyle.danger)
+        home_btn = Button(label="Home", style=discord.ButtonStyle.primary, disabled=is_first)
+        prev_btn = Button(label="Back", style=discord.ButtonStyle.secondary, disabled=is_first)
+        next_btn = Button(label="Next", style=discord.ButtonStyle.secondary, disabled=is_last)
+        close_btn = Button(label="Close", style=discord.ButtonStyle.secondary)
 
         home_btn.callback = self._home_cb
         prev_btn.callback = self._prev_cb
@@ -185,15 +186,15 @@ class View(LayoutView):
         bot_id = self.ctx.bot.user.id if self.ctx.bot.user else "1396114795102470196"
         invite_url = f"https://discord.com/oauth2/authorize?client_id={bot_id}&permissions=8&scope=bot%20applications.commands"
         support_url = serverLink or "https://discord.gg/YzHCx5yQXv"
-        invite_btn = Button(label="Invite Bot", emoji="🔗", url=invite_url, style=discord.ButtonStyle.link)
-        support_btn = Button(label="Support Server", emoji="💬", url=support_url, style=discord.ButtonStyle.link)
+        invite_btn = Button(label="Invite", url=invite_url, style=discord.ButtonStyle.link)
+        support_btn = Button(label="Support", url=support_url, style=discord.ButtonStyle.link)
         items.append(ActionRow(invite_btn, support_btn))
 
         # 7. ActionRow 3 & 4: Dropdowns
         if self.core_options:
-            items.append(ActionRow(CategorySelect(ctx=self.ctx, options=self.core_options, placeholder="🎵 Audio Systems & Safety...")))
+            items.append(ActionRow(CategorySelect(ctx=self.ctx, options=self.core_options, placeholder="Core categories")))
         if self.extra_options:
-            items.append(ActionRow(CategorySelect(ctx=self.ctx, options=self.extra_options, placeholder="🛠️ Utilities, Alerts & Telemetry...")))
+            items.append(ActionRow(CategorySelect(ctx=self.ctx, options=self.extra_options, placeholder="More categories")))
 
         # 8. Assemble CV2 Container with Accent Color
         container = build_container(*items, accent_color=ACCENT_COLOR)
@@ -251,7 +252,7 @@ class View(LayoutView):
             fields = [(f.name, f.value) for f in homeembed.fields] if hasattr(homeembed, "fields") and homeembed.fields else []
 
         self.pages.append({
-            "title": title or f"# ✨ {BRAND_NAME} System Operations • Command Center",
+            "title": title or f"# {BRAND_NAME}",
             "description": desc,
             "fields": fields,
             "footer": None
@@ -307,7 +308,7 @@ class View(LayoutView):
 
             self.pages.append({
                 "title": f"# {emoji} {original_label}",
-                "description": f"> {description}\n\n-# 💡 **Pro Tip:** Type `{self.prefix}help <command>` for detailed syntax, subcommands & permissions.",
+                "description": f"{description}\n\n-# Use `{self.prefix}help <command>` for syntax and details.",
                 "fields": formatted_sections,
                 "footer": None
             })
