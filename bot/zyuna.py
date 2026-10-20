@@ -247,6 +247,24 @@ async def update_stats():
         
         await asyncio.sleep(600) # Update every 10 minutes
 
+def _sync_auto_pull(git_dir):
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_ASKPASS"] = ""
+    env["GIT_PAGER"] = "cat"
+    env["GIT_EDITOR"] = "true"
+    env["LC_ALL"] = "C.UTF-8"
+    env["LANG"] = "C.UTF-8"
+    return subprocess.run(
+        ["git", "pull", "--no-rebase", "--autostash", "--no-edit", "origin", "main"],
+        cwd=git_dir,
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        timeout=30,
+        env=env
+    )
+
 async def auto_git_update_task():
     """A background task to periodically check and pull git updates every 10 minutes."""
     await client.wait_until_ready()
@@ -256,15 +274,9 @@ async def auto_git_update_task():
         try:
             git_dir = _find_git_dir()
             if git_dir:
-                proc = await asyncio.create_subprocess_exec(
-                    "git", "pull", "origin", "main",
-                    cwd=git_dir,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                stdout, stderr = await proc.communicate()
-                out = stdout.decode().strip()
-                err = stderr.decode().strip()
+                proc = await asyncio.to_thread(_sync_auto_pull, git_dir)
+                out = proc.stdout.strip()
+                err = proc.stderr.strip()
 
                 if proc.returncode == 0:
                     if "Already up to date" not in out and "Already up-to-date" not in out and len(out) > 0:

@@ -28,6 +28,7 @@ from utils.emoji import BOOSTS, DISCORD_BADGE_EMOJIS, LOADINGRED, NITRO_BOOST, T
 from core import Cog, zyuna, Context
 import sqlite3
 import os
+import subprocess
 import requests
 import numpy as np
 from io import BytesIO
@@ -128,6 +129,63 @@ def ignore_check():
 
 
 from utils.config import BotName
+
+
+def _exec_git_sync(repo_dir: str, force: bool = False, timeout: int = 35) -> tuple[int, str, str]:
+    """Execute git update synchronously with suppressed prompts, editor, and timeout."""
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_ASKPASS"] = ""
+    env["GIT_PAGER"] = "cat"
+    env["GIT_EDITOR"] = "true"
+    env["LC_ALL"] = "C.UTF-8"
+    env["LANG"] = "C.UTF-8"
+
+    def _run(args, to=timeout):
+        return subprocess.run(
+            args,
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            timeout=to,
+            env=env
+        )
+
+    try:
+        if force:
+            fetch_res = _run(["git", "fetch", "origin", "main"], to=timeout)
+            if fetch_res.returncode != 0:
+                return fetch_res.returncode, fetch_res.stdout.strip(), fetch_res.stderr.strip()
+            reset_res = _run(["git", "reset", "--hard", "origin/main"], to=timeout)
+            return reset_res.returncode, reset_res.stdout.strip(), reset_res.stderr.strip()
+        else:
+            pull_res = _run(["git", "pull", "--no-rebase", "--autostash", "--no-edit", "origin", "main"], to=timeout)
+            return pull_res.returncode, pull_res.stdout.strip(), pull_res.stderr.strip()
+    except subprocess.TimeoutExpired:
+        return -1, "", f"Git command timed out after {timeout} seconds."
+    except Exception as e:
+        return -2, "", str(e)
+
+
+def _get_latest_git_commit(repo_dir: str) -> str:
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_PAGER"] = "cat"
+    try:
+        res = subprocess.run(
+            ["git", "log", "-1", "--format=%h - %s (%cr)"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            timeout=10,
+            env=env
+        )
+        return res.stdout.strip()
+    except Exception:
+        return ""
+
 
 class Owner(commands.Cog):
 
@@ -280,7 +338,7 @@ class Owner(commands.Cog):
     @commands.command(name="gitpull", aliases=["update", "gitupdate", "pull"], help="Pulls latest updates from GitHub and restarts if updated.")
     @commands.is_owner()
     async def gitpull(self, ctx: Context, restart_after: Optional[str] = "yes"):
-        """Pull the latest code from GitHub repository."""
+        """Pull the latest code from GitHub repository with timeout and non-blocking execution."""
         msg = await ctx.reply("⏳ | Checking for and pulling latest updates from GitHub...", mention_author=False)
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -298,82 +356,81 @@ class Owner(commands.Cog):
                 break
 
         if not repo_dir:
-            # Determine target folder for git init (root of repository)
             target_dir = os.getcwd()
-            # If current_dir is in bot/cogs/commands, 3 levels up is repo root
             bot_parent = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
             if os.path.isdir(os.path.join(bot_parent, "bot")):
                 target_dir = bot_parent
             elif os.path.isdir(os.path.join(target_dir, "bot")):
                 target_dir = target_dir
 
-            await msg.edit(content="⚙️ | `.git` folder not found on server. Initializing and connecting to GitHub...")
-            try:
-                repo_url = "https://github.com/nithishkumar717/zyuna.git"
-                # 1. git init
-                proc1 = await asyncio.create_subprocess_exec("git", "init", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc1.communicate()
+            await msg.edit(content="⚙️ | `.git` repository folder not found. Initializing and connecting to GitHub...")
+            repo_url = "https://github.com/nithishkumar717/zyuna.git"
 
-                # 2. git remote add/set-url origin
-                proc2 = await asyncio.create_subprocess_exec("git", "remote", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                remotes_out, _ = await proc2.communicate()
-                if "origin" in remotes_out.decode().split():
-                    proc_rem = await asyncio.create_subprocess_exec("git", "remote", "set-url", "origin", repo_url, cwd=target_dir)
+            def _init_repo():
+                env = os.environ.copy()
+                env["GIT_TERMINAL_PROMPT"] = "0"
+                env["GIT_ASKPASS"] = ""
+                env["GIT_PAGER"] = "cat"
+                env["GIT_EDITOR"] = "true"
+                subprocess.run(["git", "init"], cwd=target_dir, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=20, env=env)
+                r_out = subprocess.run(["git", "remote"], cwd=target_dir, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=10, env=env).stdout
+                if "origin" in r_out.split():
+                    subprocess.run(["git", "remote", "set-url", "origin", repo_url], cwd=target_dir, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=10, env=env)
                 else:
-                    proc_rem = await asyncio.create_subprocess_exec("git", "remote", "add", "origin", repo_url, cwd=target_dir)
-                await proc_rem.communicate()
+                    subprocess.run(["git", "remote", "add", "origin", repo_url], cwd=target_dir, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=10, env=env)
+                subprocess.run(["git", "fetch", "origin", "main"], cwd=target_dir, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=40, env=env)
+                subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=target_dir, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=20, env=env)
+                subprocess.run(["git", "branch", "-M", "main"], cwd=target_dir, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=10, env=env)
+                subprocess.run(["git", "branch", "--set-upstream-to=origin/main", "main"], cwd=target_dir, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=10, env=env)
 
-                # 3. git fetch origin main
-                proc3 = await asyncio.create_subprocess_exec("git", "fetch", "origin", "main", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc3.communicate()
-
-                # 4. git reset --hard origin/main
-                proc4 = await asyncio.create_subprocess_exec("git", "reset", "--hard", "origin/main", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc4.communicate()
-
-                # 5. git branch -M main & set upstream
-                proc5 = await asyncio.create_subprocess_exec("git", "branch", "-M", "main", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc5.communicate()
-
-                proc6 = await asyncio.create_subprocess_exec("git", "branch", "--set-upstream-to=origin/main", "main", cwd=target_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc6.communicate()
-
+            try:
+                await asyncio.to_thread(_init_repo)
                 repo_dir = target_dir
             except Exception as init_err:
                 return await msg.edit(content=f"❌ | Could not initialize git repository: `{init_err}`")
 
-        try:
-            process = await asyncio.create_subprocess_exec(
-                "git", "pull", "origin", "main",
-                cwd=repo_dir,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-            out = stdout.decode().strip()
-            err = stderr.decode().strip()
+        arg_lower = (restart_after or "yes").strip().lower()
+        is_force = arg_lower in ("force", "reset", "hard")
 
-            if process.returncode != 0:
+        try:
+            returncode, out, err = await asyncio.to_thread(_exec_git_sync, repo_dir, force=is_force, timeout=35)
+
+            if returncode != 0:
                 embed = discord.Embed(
                     title="Git Pull Failed",
-                    description=f"```\n{err or out or 'Unknown git error'}\n```",
+                    description=f"```\n{(err or out or 'Unknown git error')[:1800]}\n```",
                     color=0xFF0000
+                )
+                embed.add_field(
+                    name="💡 Solution",
+                    value="If there are conflicting local changes, run `>gitpull force` to overwrite local files and sync directly from GitHub.",
+                    inline=False
                 )
                 return await msg.edit(content=None, embed=embed)
 
             is_up_to_date = "Already up to date" in out or "Already up-to-date" in out
             color = 0x3498db if is_up_to_date else 0x2ecc71
-            status_text = "Already up to date!" if is_up_to_date else "Successfully pulled updates from GitHub!"
+
+            if is_force:
+                status_text = "Forced update applied from GitHub (hard reset to origin/main)!"
+            elif is_up_to_date:
+                status_text = "Already up to date!"
+            else:
+                status_text = "Successfully pulled latest updates from GitHub!"
+
+            latest_commit = await asyncio.to_thread(_get_latest_git_commit, repo_dir)
 
             embed = discord.Embed(
                 title=f"{TICK} Git Pull Result",
-                description=f"**Status:** {status_text}\n```\n{out[:1800]}\n```",
+                description=f"**Status:** {status_text}\n```\n{(out or 'Clean update.')[:1800]}\n```",
                 color=color
             )
+            if latest_commit:
+                embed.add_field(name="Current Commit", value=f"`{latest_commit}`", inline=False)
             embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.display_avatar.url)
 
-            should_restart = restart_after.lower() in ("yes", "y", "true", "1", "restart", "r", "force")
-            if (not is_up_to_date and should_restart) or restart_after.lower() in ("force", "restart"):
+            should_restart = arg_lower in ("yes", "y", "true", "1", "restart", "r", "force")
+            if (not is_up_to_date and should_restart) or is_force or arg_lower in ("force", "restart"):
                 embed.add_field(name="Restart", value=f"Restarting {BotName} in 3 seconds to apply updates...", inline=False)
                 await msg.edit(content=None, embed=embed)
                 await asyncio.sleep(3)
@@ -383,6 +440,7 @@ class Owner(commands.Cog):
 
         except Exception as e:
             await msg.edit(content=f"❌ | An error occurred while pulling updates: `{e}`")
+
 
     @commands.command(name="sync", help="Syncs all database.")
     @commands.is_owner()
