@@ -20,10 +20,7 @@ import datetime
 from discord import ui
 from discord.ui import Button, View, LayoutView, TextDisplay, Separator, Container, ActionRow, MediaGallery
 
-try:
-    from bot.utils.music_card import MusicCardGenerator
-except (ImportError, ModuleNotFoundError):
-    from utils.music_card import MusicCardGenerator
+from utils.music_card import MusicCardGenerator
 import wavelink
 from wavelink.enums import TrackSource
 from utils import Paginator, DescriptionEmbedPaginator

@@ -4,10 +4,7 @@ from typing import Optional
 
 from discord.ext import commands
 
-try:
-    from bot.utils.Tools import DEFAULT_PREFIX, getConfig, updateConfig, blacklist_check, ignore_check
-except (ImportError, ModuleNotFoundError):
-    from utils.Tools import DEFAULT_PREFIX, getConfig, updateConfig, blacklist_check, ignore_check
+from utils.Tools import DEFAULT_PREFIX, getConfig, updateConfig, blacklist_check, ignore_check
 
 
 class Prefix(commands.Cog):

@@ -23,7 +23,7 @@ if sys.platform == "win32":
         except Exception:
             pass
 
-# Ensure current working dir, script dir, parent dir, and subfolders are in sys.path
+# Ensure the repository root is in sys.path regardless of the launch directory.
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 if _script_dir and os.path.exists(_script_dir):
     try:
@@ -35,9 +35,6 @@ for _p in [
     _script_dir,
     _parent_dir,
     os.getcwd(),
-    os.path.join(_script_dir, "bot"),
-    os.path.join(os.getcwd(), "bot"),
-    os.path.join(_parent_dir, "bot"),
 ]:
     if _p and os.path.exists(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
@@ -61,10 +58,6 @@ def _ensure_git_repo():
         return git_dir
 
     target = os.getcwd()
-    if os.path.basename(_script_dir) == "bot":
-        target = os.path.dirname(_script_dir)
-    elif os.path.isdir(os.path.join(target, "bot")):
-        target = target
 
     try:
         print(f"\033[36m◈ [Git Setup] Initializing git in {target} and connecting to {REPO_URL}...\033[0m")
@@ -120,16 +113,12 @@ def _auto_git_pull():
 
 _auto_git_pull()
 
-# Initialize global IST timezone logging for console prints & standard library logging
+# Initialize global IST timezone logging for console prints & standard library logging.
 try:
-    from bot.utils.time_utils import setup_ist_logging, now_ist, format_ist_full, format_ist_datetime
+    from utils.time_utils import setup_ist_logging, now_ist, format_ist_full, format_ist_datetime
     setup_ist_logging()
-except (ImportError, ModuleNotFoundError):
-    try:
-        from utils.time_utils import setup_ist_logging, now_ist, format_ist_full, format_ist_datetime
-        setup_ist_logging()
-    except Exception:
-        pass
+except Exception:
+    pass
 
 # If core is not yet found, check for zip archives to auto-extract or search subdirectories
 if not any(os.path.isdir(os.path.join(p, "core")) for p in sys.path if isinstance(p, str) and os.path.isdir(p)):
@@ -159,14 +148,13 @@ if not any(os.path.isdir(os.path.join(p, "core")) for p in sys.path if isinstanc
 
 # Cleanup any deprecated or leftover command files (e.g. legacy qr.py)
 for _base in [_script_dir, _parent_dir, os.getcwd()]:
-    for _sub in ["cogs/commands", "bot/cogs/commands"]:
-        _dep_qr = os.path.join(_base, _sub, "qr.py")
-        if os.path.isfile(_dep_qr):
-            try:
-                os.remove(_dep_qr)
-                print(f"\033[33m◈ Cleanup: Removed deprecated file {_dep_qr}\033[0m")
-            except Exception:
-                pass
+    _dep_qr = os.path.join(_base, "cogs", "commands", "qr.py")
+    if os.path.isfile(_dep_qr):
+        try:
+            os.remove(_dep_qr)
+            print(f"\033[33m◈ Cleanup: Removed deprecated file {_dep_qr}\033[0m")
+        except Exception:
+            pass
 
 import aiohttp
 import discord
@@ -175,46 +163,15 @@ from discord.ext import commands, tasks
 
 # (Auto-update moved to top of file)
 
-try:
-    from bot.core import Context, zyuna
-    from bot.core.Cog import Cog
-    from bot.utils.Tools import *
-    from bot.utils.config import *
-    from bot.utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
-    from bot.utils.sync_emojis import run_sync
-except (ImportError, ModuleNotFoundError):
-    from core import Context, zyuna
-    from core.Cog import Cog
-    from utils.Tools import *
-    from utils.config import *
-    from utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
-    from utils.sync_emojis import run_sync
+from core import Context, zyuna
+from core.Cog import Cog
+from utils.Tools import *
+from utils.config import *
+from utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
+from utils.sync_emojis import run_sync
 
 import jishaku
-try:
-    import bot.cogs as cogs
-except (ImportError, ModuleNotFoundError):
-    import cogs
-
-# Alias modules in sys.modules so all imports like 'from core import ...' or 'from bot.core import ...'
-# resolve to the exact same module instances without NumPy namespace collisions or circular dependency issues.
-for _mod_name in list(sys.modules.keys()):
-    if _mod_name.startswith("bot.core"):
-        _alias = _mod_name.replace("bot.core", "core", 1)
-        if _alias not in sys.modules:
-            sys.modules[_alias] = sys.modules[_mod_name]
-    elif _mod_name.startswith("bot.utils"):
-        _alias = _mod_name.replace("bot.utils", "utils", 1)
-        if _alias not in sys.modules:
-            sys.modules[_alias] = sys.modules[_mod_name]
-    elif _mod_name.startswith("core.") or _mod_name == "core":
-        _alias = f"bot.{_mod_name}"
-        if _alias not in sys.modules:
-            sys.modules[_alias] = sys.modules[_mod_name]
-    elif _mod_name.startswith("utils.") or _mod_name == "utils":
-        _alias = f"bot.{_mod_name}"
-        if _alias not in sys.modules:
-            sys.modules[_alias] = sys.modules[_mod_name]
+import cogs
 
 
 os.environ["JISHAKU_NO_DM_TRACEBACK"] = "False"

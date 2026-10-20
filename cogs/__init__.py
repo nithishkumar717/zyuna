@@ -12,10 +12,8 @@
 # ╚══════════════════════════════════════════════════════════════════╝
 
 from __future__ import annotations
-try:
-    from bot.core import zyuna
-except (ImportError, ModuleNotFoundError):
-    from core import zyuna
+
+from core import zyuna
 from colorama import Fore, Style, init
 
 from .commands.help import Help
@@ -52,10 +50,7 @@ from .zyuna.safety import _safety
 from .zyuna.games import _games
 from .zyuna.system import _system
 
-try:
-    from bot.utils.config import BotName
-except (ImportError, ModuleNotFoundError):
-    from utils.config import BotName
+from utils.config import BotName
 
 async def setup(bot: zyuna):
     cogs_to_load = [

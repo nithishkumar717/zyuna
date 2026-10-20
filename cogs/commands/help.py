@@ -15,20 +15,12 @@ import discord
 from difflib import get_close_matches
 from discord.ext import commands
 
-try:
-    from bot.core import Context, zyuna
-    from bot.core.Cog import Cog
-    from bot.utils.Tools import getConfig, ignore_check, blacklist_check
-    from bot.utils.config import serverLink, BRAND_NAME
-    from bot.utils.cv2 import CV2Embed
-    from bot.utils import help as vhelp
-except (ImportError, ModuleNotFoundError):
-    from core import Context, zyuna
-    from core.Cog import Cog
-    from utils.Tools import getConfig, ignore_check, blacklist_check
-    from utils.config import serverLink, BRAND_NAME
-    from utils.cv2 import CV2Embed
-    from utils import help as vhelp
+from core import Context, zyuna
+from core.Cog import Cog
+from utils.Tools import getConfig, ignore_check, blacklist_check
+from utils.config import serverLink, BRAND_NAME
+from utils.cv2 import CV2Embed
+from utils import help as vhelp
 
 ACCENT_COLOR = 0xC6A46A
 

@@ -32,15 +32,18 @@
 
 ```
 Zyuna/
-├── 🤖  bot/                   Discord bot engine & utilities
-│   ├── cogs/                  Command suites, events, and department help menus
-│   │   ├── commands/          Music, filters, Embed, translate, map, blacklist, notify, stats...
-│   │   ├── events/            Errors, guild join/leave, auto-blacklist, mention responses
-│   │   └── zyuna/             Interactive CV2 help category modules
-│   ├── core/                  AutoShardedBot client, Context, session recovery
-│   ├── utils/                 MusicCardGenerator, CV2 components, emoji mappings, time utils
-│   ├── db/                    SQLite databases & active music session persistence
-│   └── zyuna.py               Bot entry point
+├── assets/                    Images, fonts, and bot artwork
+├── cogs/                      Commands, events, and CV2 help categories
+│   ├── commands/              Music, filters, Embed, translate, map, blacklist, notify, stats...
+│   ├── events/                Errors, guild join/leave, auto-blacklist, mention responses
+│   └── zyuna/                  Interactive CV2 help category modules
+├── core/                      AutoShardedBot client, Context, session recovery
+├── data/                      Cards, music art, and game assets
+├── db/                        SQLite databases & active music session persistence
+├── lang/                      Language files
+├── utils/                      Music cards, CV2 components, emoji mappings, time utilities
+├── requirements.txt
+└── zyuna.py                   Bot entry point
 ```
 
 ---
@@ -134,14 +137,13 @@ Zyuna/
 
 2. Setup virtual environment:
    ```bash
-   cd bot
    python -m venv .venv
    .venv\Scripts\activate   # Windows
    # source .venv/bin/activate # Linux/macOS
    pip install -r requirements.txt
    ```
 
-3. Configure environment variables in `bot/.env`:
+3. Copy `.env.example` to `.env` and configure your environment variables:
    ```env
    TOKEN=your_discord_bot_token
    LAVALINK_URI=http://localhost:2333

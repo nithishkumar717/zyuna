@@ -16,10 +16,7 @@ import discord
 from discord.ext import commands
 # Context import removed to eliminate circular dependency
 
-try:
-    from bot.utils.emoji import DENIED
-except (ImportError, ModuleNotFoundError):
-    from utils.emoji import DENIED
+from utils.emoji import DENIED
 import aiosqlite
 import asyncio
 
@@ -164,11 +161,7 @@ def restart_program():
     from cogs.commands.music import sync_save_music_sessions
     sync_save_music_sessions()
   except Exception:
-    try:
-      from bot.cogs.commands.music import sync_save_music_sessions
-      sync_save_music_sessions()
-    except Exception:
-      pass
+    pass
   python = sys.executable
   os.execl(python, python, *sys.argv)
 

@@ -21,12 +21,8 @@ import asyncio
 import typing
 from typing import List
 import aiosqlite
-try:
-    from bot.utils.config import OWNER_IDS, BotName
-    from bot.utils.Tools import getConfig, updateConfig
-except (ImportError, ModuleNotFoundError):
-    from utils.config import OWNER_IDS, BotName
-    from utils.Tools import getConfig, updateConfig
+from utils.config import OWNER_IDS, BotName
+from utils.Tools import getConfig, updateConfig
 from .Context import Context
 from colorama import Fore, Style, init
 import importlib
@@ -64,12 +60,8 @@ class zyuna(commands.AutoShardedBot):
         try:
             from .discord.mobile_client import setup_mobile_status
             setup_mobile_status()
-        except Exception as e:
-            try:
-                from bot.core.discord.mobile_client import setup_mobile_status
-                setup_mobile_status()
-            except Exception:
-                pass
+        except Exception:
+            pass
 
     async def close(self):
         if self._speech_bubble_engine:
@@ -95,11 +87,7 @@ class zyuna(commands.AutoShardedBot):
                 await self.load_extension(extension)
                 print(Fore.GREEN + Style.BRIGHT + f"Loaded extension: {extension}")
             except Exception as e:
-                try:
-                    await self.load_extension(f"bot.{extension}")
-                    print(Fore.GREEN + Style.BRIGHT + f"Loaded extension: bot.{extension}")
-                except Exception as inner_e:
-                    print(f"{Fore.RED}{Style.BRIGHT}Failed to load extension {extension}. {e} | {inner_e}")
+                print(f"{Fore.RED}{Style.BRIGHT}Failed to load extension {extension}. {e}")
         print(Fore.GREEN + Style.BRIGHT + "*" * 20)
 
     @tasks.loop(seconds=15)
@@ -115,14 +103,8 @@ class zyuna(commands.AutoShardedBot):
                 self._speech_bubble_engine = SpeechBubbleEngine(self)
                 await self._speech_bubble_engine.start()
                 return
-            except Exception as e:
-                try:
-                    from bot.core.speech_bubble import SpeechBubbleEngine
-                    self._speech_bubble_engine = SpeechBubbleEngine(self)
-                    await self._speech_bubble_engine.start()
-                    return
-                except Exception as inner_e:
-                    self._speech_bubble_engine = False
+            except Exception:
+                self._speech_bubble_engine = False
 
         # If speech bubble engine is handling presence, we pass to avoid overriding
         if self._speech_bubble_engine:
