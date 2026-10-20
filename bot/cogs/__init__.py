@@ -40,8 +40,14 @@ from .events.Errors import Errors
 from .events.on_guild import Guild
 from .events.mention import Mention
 
-########-------HELP-------########
+########-------HELP CATEGORIES-------########
 from .zyuna.music import _music
+from .zyuna.filters import _filters
+from .zyuna.utility import _utility
+from .zyuna.alerts import _alerts
+from .zyuna.safety import _safety
+from .zyuna.games import _games
+from .zyuna.system import _system
 
 try:
     from bot.utils.config import BotName
@@ -53,7 +59,7 @@ async def setup(bot: zyuna):
         Help, Music, Owner, Embed, Blacklist, Block, Badges,
         Guild, Errors, Mention, Stats, Status, NoPrefix, FilterCog,
         Global, Messages, TranslateCog, StaffDMCog, Youtube,
-        NotifCommands, _music
+        NotifCommands, _music, _filters, _utility, _alerts, _safety, _games, _system
     ]
 
   await bot.add_cog(Help(bot))
@@ -75,6 +81,12 @@ async def setup(bot: zyuna):
 
   # Help category handlers
   await bot.add_cog(_music(bot))
+  await bot.add_cog(_filters(bot))
+  await bot.add_cog(_utility(bot))
+  await bot.add_cog(_alerts(bot))
+  await bot.add_cog(_safety(bot))
+  await bot.add_cog(_games(bot))
+  await bot.add_cog(_system(bot))
 
   # Events
   await bot.add_cog(Guild(bot))

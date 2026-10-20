@@ -33,7 +33,9 @@ from utils.config import serverLink, websiteLink, BotName, BRAND_NAME
 ACCENT_COLOR = 0xFF2A4D
 
 CORE_LABELS = {
-    "Music Commands"
+    "Studio Audio",
+    "Audio Filters",
+    "Safety & Stats"
 }
 
 
@@ -188,9 +190,9 @@ class View(LayoutView):
 
         # 7. ActionRow 3 & 4: Dropdowns
         if self.core_options:
-            items.append(ActionRow(CategorySelect(ctx=self.ctx, options=self.core_options, placeholder="🛡️ Core Systems & Defense Modules...")))
+            items.append(ActionRow(CategorySelect(ctx=self.ctx, options=self.core_options, placeholder="🎵 Audio Systems & Safety...")))
         if self.extra_options:
-            items.append(ActionRow(CategorySelect(ctx=self.ctx, options=self.extra_options, placeholder="⚡ Community & Extra Features...")))
+            items.append(ActionRow(CategorySelect(ctx=self.ctx, options=self.extra_options, placeholder="🛠️ Utilities, Alerts & Telemetry...")))
 
         # 8. Assemble CV2 Container with Accent Color
         container = build_container(*items, accent_color=ACCENT_COLOR)

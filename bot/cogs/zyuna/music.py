@@ -20,14 +20,19 @@ class _music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    """Music commands"""
+    """Studio Audio commands"""
 
     def help_custom(self):
-              emoji = MUSIC
-              label = "Music Commands"
-              description = "Show you Commands of Music"
-              return emoji, label, description
+        emoji = MUSIC
+        label = "Studio Audio"
+        description = "High-fidelity music playback, queue controls & Spotify"
+        return emoji, label, description
 
     @commands.group()
     async def __Music__(self, ctx: commands.Context):
-        """`play` , `search` , `loop` , `autoplay` , `nowplaying` , `shuffle` , `stop` , `skip` , `seek` , `join` , `disconnect` , `replay` , `queue` , `clearqueue` , `pause` , `resume` , `volume` , `filter` , `filter enable` , `filter disable`"""
+        """
+__**Playback Controls**__
+play, search, pause, resume, skip, stop, seek, replay, volume, loop, shuffle, autoplay
+__**Queue & Connection**__
+queue, clearqueue, nowplaying, join, disconnect, spotify
+"""

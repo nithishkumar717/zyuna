@@ -120,21 +120,28 @@ class HelpCommand(commands.HelpCommand):
         embed = CV2Embed(
             title=f"# ✨ {BRAND_NAME} System Operations • Command Center",
             description=(
-                f"> High-performance Discord architecture featuring high-fidelity studio audio, "
-                f"interactive web dashboard synchronization, and next-generation server engagement.\n\n"
+                f"> High-performance Discord architecture featuring studio-grade audio playback, "
+                f"audio FX DSP filtering, rich embed creation, social alerts, chat safety, and real-time telemetry.\n\n"
                 f"### 📊 System Telemetry\n"
                 f"• **Prefix:** `{prefix}` | **Version:** `v7.02 Core` | **Latency:** `{latency_ms}ms`\n"
                 f"• **Commands Available:** `{total_commands}` | **Active Modules:** `{active_cogs} Systems`\n"
                 f"• **Architecture:** `Discord Components V2 (CV2)` | **Cluster:** `Operational`\n\n"
                 f"### 🧭 Module Directory\n"
-                f"🎵 **`Studio Audio`** `»` Music Playback • Audio FX Filters • Queue Management • Search\n"
-                f"⚙️ **`Core & Utilities`** `»` Server Telemetry • Embed Builder • Language Translator • YouTube Alerts\n\n"
+                f"🎵 **`Studio Audio`** `»` Music Playback • Queue Engine • Continuous Playback • Spotify\n"
+                f"🎛️ **`Audio Filters`** `»` 15+ Real-Time DSP Presets (8D, Bassboost, Nightcore, Vaporwave)\n"
+                f"🛠️ **`Utilities & Tools`** `»` Rich Embed Builder • Hinglish Translator • Webhooks • Satellite Maps\n"
+                f"🔔 **`Social Alerts`** `»` Automated YouTube & Twitch Live Stream / Upload Notifications\n"
+                f"🛡️ **`Safety & Stats`** `»` Word Blacklists • Staff Dispatch • Message Leaderboards • Auto NP\n"
+                f"🎮 **`Mini-Games`** `»` Reflex Emoji Reaction Challenge\n"
+                f"📊 **`System Telemetry`** `»` Codebase Metrics • Resource Monitoring • Cluster Status\n\n"
                 f"### ⚡ Quick Deployment\n"
                 f"• `{prefix}play <query>` `»` *Play high-fidelity music from YouTube/Spotify*\n"
-                f"• `{prefix}embed` `»` *Deploy custom rich interactive embed builder*\n"
-                f"• `{prefix}translate <lang> <text>` `»` *Translate message to designated language*\n\n"
+                f"• `{prefix}filter` `»` *Apply 8D, Bassboost, or Nightcore DSP filters*\n"
+                f"• `{prefix}embed` `»` *Launch interactive CV2 embed builder*\n"
+                f"• `{prefix}hinglish <text>` `»` *Translate message between English/Hindi/Hinglish*\n"
+                f"• `{prefix}reaction` `»` *Start an emoji reflex reaction challenge*\n\n"
                 f"### 🕹️ Interactive Navigation\n"
-                f"Select any category from the dropdowns below or use the navigation bar."
+                f"Select any category from the dropdowns below or use the navigation buttons."
             ),
             color=ACCENT_COLOR
         )
