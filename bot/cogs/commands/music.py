@@ -371,20 +371,19 @@ class SuggestedByAISelect(ui.Select):
         guild_id = player.guild.id if player and player.guild else 0
 
         suggestions = getattr(cog, "ai_suggestions", {}).get(guild_id, []) if cog else []
+        self.suggestions = list(suggestions[:5])
         options = []
-        if suggestions:
-            for s in suggestions[:5]:
+        if self.suggestions:
+            for index, s in enumerate(self.suggestions):
                 raw_title = getattr(s, "title", str(s))
                 raw_artist = getattr(s, "author", "Artist")
-                uri = getattr(s, "uri", str(s))
 
                 lbl = raw_title[:95] if raw_title else "Suggested Track"
                 desc = f"{raw_artist}"[:95]
-                val = str(uri)[:100]
 
                 options.append(discord.SelectOption(
                     label=lbl,
-                    value=val,
+                    value=str(index),
                     description=desc,
                     emoji="🎵"
                 ))
@@ -392,9 +391,9 @@ class SuggestedByAISelect(ui.Select):
         if not options:
             options = [
                 discord.SelectOption(
-                    label="Analyzing recommendations...",
+                    label="No suggestions available",
                     value="pending",
-                    description="AI is selecting top related tracks",
+                    description="Try again after another track plays",
                     emoji="✨"
                 )
             ]
@@ -414,17 +413,14 @@ class SuggestedByAISelect(ui.Select):
 
         selected_val = self.values[0]
         if selected_val == "pending":
-            return await interaction.response.send_message("✨ AI is analyzing recommendations for this track. Please try again in a moment!", ephemeral=True)
+            return await interaction.response.send_message("✨ No AI recommendations were found for this track. Try again after another track plays.", ephemeral=True)
 
         await interaction.response.defer(ephemeral=True)
         try:
-            tracks = await wavelink.Playable.search(selected_val)
-            if tracks:
-                track = tracks[0]
-                await self.player.queue.put_wait(track)
-                await interaction.followup.send(f"✨ **Added AI Recommendation to queue:** `[{track.title}]({track.uri})`", ephemeral=True)
-            else:
-                await interaction.followup.send("❌ Could not load the selected recommendation.", ephemeral=True)
+            track_index = int(selected_val)
+            track = self.suggestions[track_index]
+            await self.player.queue.put_wait(track)
+            await interaction.followup.send(f"✨ **Added AI Recommendation to queue:** `[{track.title}]({track.uri})`", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Error adding suggested track: `{e}`", ephemeral=True)
 
@@ -797,7 +793,8 @@ class Music(commands.Cog):
         _music_cog_instance = self
         
         self.inactivity_timeout = 120
-        self.ai_suggestions = {} 
+        self.ai_suggestions = {}
+        self._ai_suggestion_track_keys: Dict[int, str] = {}
         self.player_inactivity = {}
         self._inactivity_tasks = {}
         self._247_modes = self.load_247_modes()
@@ -870,6 +867,15 @@ class Music(commands.Cog):
         return self.sessions[guild_id]
 
     async def precompute_ai_suggestions(self, guild_id: int, current_track_dict: dict):
+        track_key = str(
+            current_track_dict.get("id")
+            or current_track_dict.get("url")
+            or normalize_title(current_track_dict.get("title", ""))
+        )
+        if self._ai_suggestion_track_keys.get(guild_id) == track_key:
+            return
+
+        self.ai_suggestions[guild_id] = []
         try:
             session = self.get_session(guild_id)
             queries = AutoplayEngine.generate_smart_queries(
@@ -888,9 +894,6 @@ class Music(commands.Cog):
                             gathered_playables.extend(res[:5])
                 except Exception:
                     pass
-
-            if not gathered_playables:
-                return
 
             candidates = []
             for t in gathered_playables:
@@ -924,8 +927,28 @@ class Music(commands.Cog):
                 if len(suggestions) >= 5:
                     break
 
-            if suggestions:
-                self.ai_suggestions[guild_id] = suggestions
+            if not suggestions:
+                artist = current_track_dict.get("artist") or current_track_dict.get("uploader") or ""
+                title = current_track_dict.get("title") or ""
+                fallback_query = f"{artist} songs" if artist else f"{title} mix"
+                if fallback_query.strip():
+                    fallback_results = await wavelink.Playable.search(fallback_query)
+                    fallback_tracks = (
+                        fallback_results.tracks
+                        if isinstance(fallback_results, wavelink.Playlist)
+                        else fallback_results
+                    )
+                    for playable in fallback_tracks or []:
+                        candidate_title = normalize_title(getattr(playable, "title", ""))
+                        if not candidate_title or candidate_title in history_set:
+                            continue
+                        if playable not in suggestions:
+                            suggestions.append(playable)
+                        if len(suggestions) >= 5:
+                            break
+
+            self.ai_suggestions[guild_id] = suggestions[:5]
+            self._ai_suggestion_track_keys[guild_id] = track_key
         except Exception as e:
             print(f"[ML AI Suggestions] Error: {e}")
 
@@ -999,7 +1022,6 @@ class Music(commands.Cog):
                     "id": getattr(chosen_playable, "identifier", ""),
                 }
                 session.record_played_track(track_dict, is_manual=False)
-                self.client.loop.create_task(self.precompute_ai_suggestions(guild_id, track_dict))
                 return chosen_playable
 
             return None
@@ -1446,19 +1468,6 @@ class Music(commands.Cog):
             if task is asyncio.current_task():
                 self._inactivity_tasks.pop(guild_id, None)
 
-    async def refresh_ai_suggestions(self, guild_id: int, track):
-        """Fetch smart algorithmic recommendations for current track."""
-        try:
-            author = getattr(track, 'author', '') or ''
-            title = getattr(track, 'title', '') or ''
-            query = f"{author} songs" if author else f"{title} mix"
-            tracks = await wavelink.Playable.search(query)
-            if tracks:
-                filtered = [t for t in tracks if getattr(t, 'title', '').lower() != title.lower()][:5]
-                self.ai_suggestions[guild_id] = filtered
-        except Exception:
-            pass
-
     async def connect_nodes(self) -> None:
         host = os.getenv("LAVALINK_HOST", "lava-v4.ajieblogs.eu.org")
         password = os.getenv("LAVALINK_PASSWORD", "https://dsc.gg/ajidevserver")
@@ -1477,12 +1486,20 @@ class Music(commands.Cog):
 
     async def display_player_embed(self, player, track, ctx, autoplay=False):
         guild_id = player.guild.id if player and player.guild else 0
-        if guild_id and track:
-            asyncio.create_task(self.refresh_ai_suggestions(guild_id, track))
-
         channel = getattr(ctx, "channel", None) or getattr(player, "channel", None)
         if not channel:
             return
+
+        if guild_id and track:
+            track_dict = {
+                "title": getattr(track, "title", ""),
+                "uploader": getattr(track, "author", ""),
+                "artist": getattr(track, "author", ""),
+                "duration": (getattr(track, "length", 0) or 0) / 1000.0,
+                "url": getattr(track, "uri", ""),
+                "id": getattr(track, "identifier", ""),
+            }
+            await self.precompute_ai_suggestions(guild_id, track_dict)
 
         try:
             title = getattr(track, 'title', 'Unknown Track')
@@ -1662,7 +1679,6 @@ class Music(commands.Cog):
                 "id": getattr(track, "identifier", ""),
             }
             session.record_played_track(track_dict, is_manual=True)
-            self.client.loop.create_task(self.precompute_ai_suggestions(ctx.guild.id, track_dict))
             self.client.loop.create_task(self.telemetry.log_event(
                 event_type=MusicTelemetryEvent.PLAY_STARTED,
                 guild_id=ctx.guild.id,
@@ -1731,7 +1747,6 @@ class Music(commands.Cog):
                     "id": getattr(track, "identifier", ""),
                 }
                 session.record_played_track(track_dict, is_manual=True)
-                self.client.loop.create_task(self.precompute_ai_suggestions(ctx.guild.id, track_dict))
                 self.client.loop.create_task(self.telemetry.log_event(
                     event_type=MusicTelemetryEvent.PLAY_STARTED,
                     guild_id=ctx.guild.id,
