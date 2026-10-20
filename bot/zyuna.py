@@ -535,43 +535,6 @@ async def reaction(ctx: Context):
         await message.edit(embed=embed)
 
 
-# ---API Server for Dashboard Backend ---
-import uvicorn
-from threading import Thread
-try:
-    from bot.api.server import create_app
-    from bot.api.dependencies import set_bot
-except (ImportError, ModuleNotFoundError):
-    from api.server import create_app
-    from api.dependencies import set_bot
-
-fastapi_app = create_app()
-fastapi_app.state.bot = client
-set_bot(client)
-
-API_ENABLED = os.getenv("API_ENABLED", "true").strip().lower() == "true"
-API_PORT = int(os.getenv("API_PORT", "8000"))
-
-def run_api():
-    uvicorn.run(fastapi_app, host='0.0.0.0', port=API_PORT, log_level="warning")
-
-def keep_alive():
-    if not API_ENABLED:
-        print(f"\033[33m◈ API Server: Disabled via API_ENABLED=false\033[0m")
-        return
-    print(f"\033[32m◈ API Server: Starting on port {API_PORT}\033[0m")
-    server = Thread(target=run_api, daemon=True)
-    server.start()
-
-keep_alive()
-
-# --- Cloudflare Tunnel (HTTPS for API) ---
-try:
-    from bot.utils.tunnel import start_tunnel
-except (ImportError, ModuleNotFoundError):
-    from utils.tunnel import start_tunnel
-start_tunnel()
-
 # --- Main Bot Execution ---
 async def main():
     async with client:

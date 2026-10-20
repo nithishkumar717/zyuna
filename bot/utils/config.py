@@ -26,9 +26,9 @@ server     = SUPPORT_SERVER_URL
 serverLink = SUPPORT_SERVER_URL
 ch         = SUPPORT_SERVER_URL
 
-DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "https://zyuna.vercel.app")
-website       = DASHBOARD_URL
-websiteLink   = DASHBOARD_URL
+DASHBOARD_URL = None
+website       = SUPPORT_SERVER_URL
+websiteLink   = SUPPORT_SERVER_URL
 
 CMD_WEBHOOK_URL = os.getenv("CMD_WEBHOOK_URL")
 

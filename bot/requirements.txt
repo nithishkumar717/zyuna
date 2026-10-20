@@ -31,12 +31,7 @@ PyYAML
 Requests
 openai
 duckduckgo-search==6.3.6
-# pillow==11.0.0
 colorama
 chess
 python-dateutil
 deep-translator==1.11.4
-uvicorn==0.46.0
-fastapi
-slowapi
-pycloudflared

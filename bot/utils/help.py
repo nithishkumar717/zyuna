@@ -17,7 +17,7 @@ Features:
 - Premium Neon Crimson Accent Container styling
 - Organized Multi-Tier Select Menus (Core Systems vs Community & Extra Modules)
 - Fast-action Navigation Bar (Overview, Prev, Next, Close)
-- One-Click Quick Links (Dashboard, Support Server)
+- One-Click Quick Links (Invite Bot, Support Server)
 - Clean, parsed command matrices with inline pills and syntax
 - Real-time responsive pagination and user-lock protection
 """
@@ -182,11 +182,12 @@ class View(LayoutView):
         items.append(ActionRow(home_btn, prev_btn, next_btn, close_btn))
 
         # 6. ActionRow 2: Quick Links
-        dash_url = websiteLink or "https://zyuna.vercel.app"
+        bot_id = self.ctx.bot.user.id if self.ctx.bot.user else "1396114795102470196"
+        invite_url = f"https://discord.com/oauth2/authorize?client_id={bot_id}&permissions=8&scope=bot%20applications.commands"
         support_url = serverLink or "https://discord.gg/YzHCx5yQXv"
-        dash_btn = Button(label="Dashboard", emoji="🌐", url=dash_url, style=discord.ButtonStyle.link)
+        invite_btn = Button(label="Invite Bot", emoji="🔗", url=invite_url, style=discord.ButtonStyle.link)
         support_btn = Button(label="Support Server", emoji="💬", url=support_url, style=discord.ButtonStyle.link)
-        items.append(ActionRow(dash_btn, support_btn))
+        items.append(ActionRow(invite_btn, support_btn))
 
         # 7. ActionRow 3 & 4: Dropdowns
         if self.core_options:

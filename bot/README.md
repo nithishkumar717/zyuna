@@ -9,11 +9,10 @@
 ╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝
 ```
 
-<h3>Zyuna Bot — Python Discord Bot + FastAPI Backend</h3>
+<h3>Zyuna Bot — Python Discord Bot</h3>
 
 <p>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white"/></a>
-  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white"/></a>
   <a href="https://discordpy.readthedocs.io"><img src="https://img.shields.io/badge/Discord.py-v2-5865F2?style=for-the-badge&logo=discord&logoColor=white"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-red?style=for-the-badge"/></a>
 </p>
@@ -28,15 +27,10 @@
 
 ## ✦ Overview
 
-This directory contains the Zyuna Discord bot engine built on `discord.py v2` along with the high-performance `FastAPI` service that communicates with the Next.js web dashboard. Everything starts seamlessly from `python zyuna.py`.
+This directory contains the Zyuna Discord bot engine built on `discord.py v2` and `Wavelink v3`.
 
 ```
 bot/
-├── api/                   FastAPI REST backend (/bot, /guilds, /admin)
-│   ├── routes/            Modular route handlers
-│   ├── db_manager.py      Persistent connection pool
-│   ├── schemas.py         Pydantic v2 data models
-│   └── server.py          Uvicorn server lifecycle
 ├── cogs/
 │   ├── commands/          Feature command suites (music, filters, Embed, translate, blacklist, notify, stats...)
 │   ├── events/            System, error, and mention event listeners
@@ -95,6 +89,6 @@ python -m venv .venv
 # Install requirements
 pip install -r requirements.txt
 
-# Start bot and API backend
+# Start bot
 python zyuna.py
 ```
