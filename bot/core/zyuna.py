@@ -23,10 +23,10 @@ from typing import List
 import aiosqlite
 try:
     from bot.utils.config import OWNER_IDS, BotName
-    from bot.utils import getConfig, updateConfig
+    from bot.utils.Tools import getConfig, updateConfig
 except (ImportError, ModuleNotFoundError):
     from utils.config import OWNER_IDS, BotName
-    from utils import getConfig, updateConfig
+    from utils.Tools import getConfig, updateConfig
 from .Context import Context
 from colorama import Fore, Style, init
 import importlib

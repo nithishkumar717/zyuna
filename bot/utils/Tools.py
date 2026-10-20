@@ -14,10 +14,7 @@
 import json, sys, os
 import discord
 from discord.ext import commands
-try:
-    from bot.core import Context
-except (ImportError, ModuleNotFoundError):
-    from core import Context
+# Context import removed to eliminate circular dependency
 
 try:
     from bot.utils.emoji import DENIED
