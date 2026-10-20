@@ -58,8 +58,25 @@ class zyuna(commands.AutoShardedBot):
                          shard_count=1)
         self.status_index = 0
         self.status_list = []
+        self._speech_bubble_engine = None
+
+        # Setup Discord Mobile Client status indicator (phone badge 📱)
+        try:
+            from .discord.mobile_client import setup_mobile_status
+            setup_mobile_status()
+        except Exception as e:
+            try:
+                from bot.core.discord.mobile_client import setup_mobile_status
+                setup_mobile_status()
+            except Exception:
+                pass
 
     async def close(self):
+        if self._speech_bubble_engine:
+            try:
+                await self._speech_bubble_engine.stop()
+            except Exception:
+                pass
         music_cog = self.get_cog("Music")
         if music_cog and hasattr(music_cog, "save_all_sessions_sync"):
             try:
@@ -85,10 +102,30 @@ class zyuna(commands.AutoShardedBot):
                     print(f"{Fore.RED}{Style.BRIGHT}Failed to load extension {extension}. {e} | {inner_e}")
         print(Fore.GREEN + Style.BRIGHT + "*" * 20)
 
-    @tasks.loop(seconds=30)
+    @tasks.loop(seconds=15)
     async def status_task(self):
         await self.wait_until_ready()
         if not self.guilds:
+            return
+
+        # Initialize speech bubble engine if not running
+        if self._speech_bubble_engine is None:
+            try:
+                from .speech_bubble import SpeechBubbleEngine
+                self._speech_bubble_engine = SpeechBubbleEngine(self)
+                await self._speech_bubble_engine.start()
+                return
+            except Exception as e:
+                try:
+                    from bot.core.speech_bubble import SpeechBubbleEngine
+                    self._speech_bubble_engine = SpeechBubbleEngine(self)
+                    await self._speech_bubble_engine.start()
+                    return
+                except Exception as inner_e:
+                    self._speech_bubble_engine = False
+
+        # If speech bubble engine is handling presence, we pass to avoid overriding
+        if self._speech_bubble_engine:
             return
 
         guild = self.guilds[0]  # Use first available guild for prefix
@@ -101,18 +138,10 @@ class zyuna(commands.AutoShardedBot):
         user_count = sum(g.member_count or 0 for g in self.guilds)
         guild_count = len(self.guilds)
 
-        self.status_list = [
-            (discord.ActivityType.listening, f"{prefix}help | {prefix}play"),
-            (discord.ActivityType.watching, f"{user_count} users"),
-            (discord.ActivityType.watching, f"{guild_count} servers"),
-            (discord.ActivityType.listening, f"High-Fidelity Audio • {BotName}"),
-            (discord.ActivityType.playing, f"{BotName} Studio"),
-        ]
-
-        current = self.status_list[self.status_index % len(self.status_list)]
-        # This task only changes the activity, not the online status (dnd, idle, etc.)
-        await self.change_presence(activity=discord.Activity(type=current[0], name=current[1]))
-        self.status_index += 1
+        # Fallback custom activity
+        custom_bubble = f"👑 Yuna • High-Fidelity Audio | {prefix}help"
+        activity = discord.CustomActivity(name=custom_bubble)
+        await self.change_presence(status=discord.Status.do_not_disturb, activity=activity)
 
     async def send_raw(self, channel_id: int, content: str, **kwargs) -> typing.Optional[discord.Message]:
         await self.http.send_message(channel_id, content, **kwargs)
