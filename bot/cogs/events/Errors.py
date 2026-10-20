@@ -18,6 +18,7 @@ from discord.ext import commands
 from utils.config import serverLink
 from core import zyuna, Cog, Context
 from utils.Tools import get_ignore_data
+from utils.emoji import DENIED
 
 class Errors(Cog):
   def __init__(self, client: zyuna):
@@ -30,6 +31,10 @@ class Errors(Cog):
     
 
     if isinstance(error, commands.CommandNotFound):
+      return
+
+    if isinstance(error, commands.NotOwner):
+      await ctx.reply(f"{DENIED} | **Access Denied**: This command is strictly restricted to the **Bot Owner** only.", mention_author=False)
       return
 
     if isinstance(error, commands.MissingRequiredArgument):

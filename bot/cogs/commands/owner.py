@@ -24,7 +24,7 @@ from typing import Optional
 from utils import Paginator, DescriptionEmbedPaginator, FieldPagePaginator, TextPaginator
 from utils.Tools import *
 from utils.config import OWNER_IDS, BOT_OWNER_IDS
-from utils.emoji import BOOSTS, DISCORD_BADGE_EMOJIS, LOADINGRED, NITRO_BOOST, TICK, ZWARNING
+from utils.emoji import BOOSTS, DISCORD_BADGE_EMOJIS, LOADINGRED, NITRO_BOOST, TICK, ZWARNING, DENIED
 from core import Cog, zyuna, Context
 import sqlite3
 import os
@@ -118,6 +118,19 @@ async def is_owner_or_staff(ctx):
     if owner_cog:
         is_staff_member = ctx.author.id in getattr(owner_cog, 'staff', set())
     return is_staff_member or ctx.author.id in OWNER_IDS
+
+async def is_strict_bot_owner(ctx) -> bool:
+    """Strictly checks if user is a bot owner. Staff or regular users are denied."""
+    if ctx.author.id in OWNER_IDS or ctx.author.id in BOT_OWNER_IDS:
+        return True
+    if getattr(ctx.bot, "owner_id", None) and ctx.author.id == ctx.bot.owner_id:
+        return True
+    if getattr(ctx.bot, "owner_ids", None) and ctx.author.id in ctx.bot.owner_ids:
+        return True
+    try:
+        return await ctx.bot.is_owner(ctx.author)
+    except Exception:
+        return False
 
 def blacklist_check():
     async def predicate(ctx): return True
@@ -393,9 +406,11 @@ class Owner(commands.Cog):
         restart_program()
 
     @commands.command(name="gitpull", aliases=["update", "gitupdate", "pull"], help="Pulls latest updates from GitHub and restarts if updated.")
-    @commands.is_owner()
+    @commands.check(is_strict_bot_owner)
     async def gitpull(self, ctx: Context, restart_after: Optional[str] = "yes"):
         """Pull the latest code from GitHub repository with timeout and non-blocking execution."""
+        if not await is_strict_bot_owner(ctx):
+            return await ctx.reply(f"{DENIED} | **Access Denied**: This command is strictly restricted to the **Bot Owner** only.", mention_author=False)
         msg = await ctx.reply("⏳ | Checking for and pulling latest updates from GitHub...", mention_author=False)
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -498,6 +513,14 @@ class Owner(commands.Cog):
         except Exception as e:
             await msg.edit(content=f"❌ | An error occurred while pulling updates: `{e}`")
 
+
+    @gitpull.error
+    async def gitpull_error(self, ctx: Context, error):
+        if isinstance(error, (commands.CheckFailure, commands.NotOwner)):
+            try:
+                await ctx.reply(f"{DENIED} | **Access Denied**: This command is strictly restricted to the **Bot Owner** only.", mention_author=False)
+            except Exception:
+                pass
 
     @commands.command(name="sync", help="Syncs all database.")
     @commands.is_owner()
