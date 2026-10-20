@@ -130,7 +130,7 @@ class HelpCommand(commands.HelpCommand):
                 f"🎵 **`Studio Audio`** `»` Music Playback • Audio FX Filters • Queue Management • Search\n"
                 f"⚔️ **`Server Governance`** `»` Auto-Roles • Reaction Roles • Tickets • Verification • Custom Roles • Logging\n"
                 f"🚀 **`Automation & Utility`** `»` Welcomer • Sticky Messages • Join DM • Server Settings • Invites\n"
-                f"💎 **`Community & Engagement`** `»` Leveling • Counting • Vanity Roles • Games • Birthdays • Giveaways\n\n"
+                f"💎 **`Community & Engagement`** `»` Birthdays • Giveaways • Boost Roles & Tracking\n\n"
                 f"### ⚡ Quick Deployment\n"
                 f"• `{prefix}play <query>` `»` *Play high-fidelity music from YouTube/Spotify*\n"
                 f"• `{prefix}ticket setup` `»` *Deploy interactive user ticket panel*\n"
