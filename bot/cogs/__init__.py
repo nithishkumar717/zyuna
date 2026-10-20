@@ -34,6 +34,8 @@ from .commands.owner2 import Global
 from .commands.messages import Messages
 from .commands.dms import StaffDMCog
 from .commands.youtube import Youtube
+from .commands.map import Map
+from .commands.msgpack import Messagespack
 
 #____________ Events _____________
 from .events.Errors import Errors
@@ -55,45 +57,47 @@ except (ImportError, ModuleNotFoundError):
     from utils.config import BotName
 
 async def setup(bot: zyuna):
-  cogs_to_load = [
+    cogs_to_load = [
         Help, Music, Owner, Embed, Blacklist, Block, Badges,
         Guild, Errors, Mention, Stats, Status, NoPrefix, FilterCog,
-        Global, Messages, TranslateCog, StaffDMCog, Youtube,
+        Global, Messages, TranslateCog, StaffDMCog, Youtube, Map, Messagespack,
         NotifCommands, _music, _filters, _utility, _alerts, _safety, _games, _system
     ]
 
-  await bot.add_cog(Help(bot))
-  await bot.add_cog(Music(bot))
-  await bot.add_cog(Owner(bot))
-  await bot.add_cog(Embed(bot))
-  await bot.add_cog(Blacklist(bot))
-  await bot.add_cog(Block(bot))
-  await bot.add_cog(Badges(bot))
-  await bot.add_cog(Stats(bot))
-  await bot.add_cog(Status(bot))
-  await bot.add_cog(NoPrefix(bot))
-  await bot.add_cog(FilterCog(bot))
-  await bot.add_cog(Global(bot))
-  await bot.add_cog(Messages(bot))
-  await bot.add_cog(TranslateCog(bot))
-  await bot.add_cog(StaffDMCog(bot))
-  await bot.add_cog(Youtube(bot))
+    await bot.add_cog(Help(bot))
+    await bot.add_cog(Music(bot))
+    await bot.add_cog(Owner(bot))
+    await bot.add_cog(Embed(bot))
+    await bot.add_cog(Blacklist(bot))
+    await bot.add_cog(Block(bot))
+    await bot.add_cog(Badges(bot))
+    await bot.add_cog(Stats(bot))
+    await bot.add_cog(Status(bot))
+    await bot.add_cog(NoPrefix(bot))
+    await bot.add_cog(FilterCog(bot))
+    await bot.add_cog(Global(bot))
+    await bot.add_cog(Messages(bot))
+    await bot.add_cog(TranslateCog(bot))
+    await bot.add_cog(StaffDMCog(bot))
+    await bot.add_cog(Youtube(bot))
+    await bot.add_cog(Map(bot))
+    await bot.add_cog(Messagespack(bot))
 
-  # Help category handlers
-  await bot.add_cog(_music(bot))
-  await bot.add_cog(_filters(bot))
-  await bot.add_cog(_utility(bot))
-  await bot.add_cog(_alerts(bot))
-  await bot.add_cog(_safety(bot))
-  await bot.add_cog(_games(bot))
-  await bot.add_cog(_system(bot))
+    # Help category handlers
+    await bot.add_cog(_music(bot))
+    await bot.add_cog(_filters(bot))
+    await bot.add_cog(_utility(bot))
+    await bot.add_cog(_alerts(bot))
+    await bot.add_cog(_safety(bot))
+    await bot.add_cog(_games(bot))
+    await bot.add_cog(_system(bot))
 
-  # Events
-  await bot.add_cog(Guild(bot))
-  await bot.add_cog(Errors(bot))
-  await bot.add_cog(Mention(bot))
-  await bot.add_cog(NotifCommands(bot))
+    # Events
+    await bot.add_cog(Guild(bot))
+    await bot.add_cog(Errors(bot))
+    await bot.add_cog(Mention(bot))
+    await bot.add_cog(NotifCommands(bot))
 
-  for cog in cogs_to_load:
-    print(Fore.RED + Style.BRIGHT + f"Loaded cog: {cog.__name__}")
-  print(Fore.RED + Style.BRIGHT + f"All {BotName} Cogs loaded successfully.")
+    for cog in cogs_to_load:
+        print(Fore.RED + Style.BRIGHT + f"Loaded cog: {cog.__name__}")
+    print(Fore.RED + Style.BRIGHT + f"All {BotName} Cogs loaded successfully.")

@@ -3,13 +3,12 @@
 import React, { useState } from 'react';
 import { 
   BookOpen, 
-  ShieldCheck, 
-  Zap, 
+  Headphones, 
   Sliders, 
-  Layers, 
-  UserPlus, 
-  Gift, 
-  Radio, 
+  Bell, 
+  ShieldCheck, 
+  Wrench, 
+  RefreshCw, 
   ChevronRight
 } from 'lucide-react';
 
@@ -20,17 +19,16 @@ interface DocsViewProps {
 
 export const DocsView: React.FC<DocsViewProps> = ({ onOpenLogin, onOpenInvite }) => {
   const [activeTab, setActiveTab] = useState<string>('getting-started');
-  const botName = process.env.NEXT_PUBLIC_BRAND_NAME || "YUNA";
+  const botName = process.env.NEXT_PUBLIC_BRAND_NAME || "ZYUNA";
 
   const topics = [
     { id: 'getting-started', title: 'Getting Started', icon: BookOpen },
-    { id: 'antinuke', title: 'Antinuke Protection', icon: ShieldCheck },
-    { id: 'automod', title: 'Auto Moderation', icon: Zap },
-    { id: 'limits', title: 'Action Limits', icon: Sliders },
-    { id: 'emergency', title: 'Emergency Lockdown', icon: Radio },
-    { id: 'custom-roles', title: 'Custom Roles', icon: Layers },
-    { id: 'welcomer', title: 'Welcomer System', icon: UserPlus },
-    { id: 'giveaway', title: 'Giveaways', icon: Gift }
+    { id: 'music', title: 'Studio Audio Engine', icon: Headphones },
+    { id: 'filters', title: 'DSP Audio Filters', icon: Sliders },
+    { id: 'alerts', title: 'Social Stream Alerts', icon: Bell },
+    { id: 'safety', title: 'Chat Safety & Moderation', icon: ShieldCheck },
+    { id: 'utilities', title: 'Server Utilities', icon: Wrench },
+    { id: 'recovery', title: 'Session Persistence', icon: RefreshCw }
   ];
 
   return (
@@ -99,57 +97,112 @@ export const DocsView: React.FC<DocsViewProps> = ({ onOpenLogin, onOpenInvite })
             <div className="space-y-4">
               <h2 className="text-2xl font-black text-white">Getting Started with {botName}</h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                {botName} is engineered to provide instant out-of-the-box protection without requiring complex command syntax. Follow the quick guide below:
+                {botName} is engineered to deliver high-fidelity audio, DSP filters, and essential server tools with zero friction.
               </p>
 
               <div className="space-y-3 pt-2">
                 <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 space-y-1">
                   <span className="text-xs font-bold text-red-400 uppercase">Step 1: Invite Bot</span>
                   <p className="text-xs text-slate-300">
-                    Click &ldquo;Add to Discord&rdquo; and invite {botName} with <strong>Administrator permissions</strong>. Ensure {botName}&apos;s role is placed high in your server role hierarchy.
+                    Invite {botName} to your server and join a voice channel.
                   </p>
                 </div>
 
                 <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 space-y-1">
-                  <span className="text-xs font-bold text-red-400 uppercase">Step 2: Enable Antinuke</span>
+                  <span className="text-xs font-bold text-red-400 uppercase">Step 2: Stream Music</span>
                   <p className="text-xs text-slate-300">
-                    Use <code className="text-amber-300 font-mono text-[11px]">&antinuke enable</code> or activate the AntiNuke toggle in your web dashboard.
+                    Type <code className="text-amber-300 font-mono text-[11px]">&gt;play &lt;song&gt;</code> to start playback with our custom Yuna UI player card.
                   </p>
                 </div>
 
                 <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 space-y-1">
-                  <span className="text-xs font-bold text-red-400 uppercase">Step 3: Configure Limits</span>
+                  <span className="text-xs font-bold text-red-400 uppercase">Step 3: Apply Audio Filters</span>
                   <p className="text-xs text-slate-300">
-                    Set strict channel deletion, ban, and kick quotas so compromised staff accounts are automatically contained.
+                    Use <code className="text-amber-300 font-mono text-[11px]">&gt;8d</code>, <code className="text-amber-300 font-mono text-[11px]">&gt;bassboost</code>, or <code className="text-amber-300 font-mono text-[11px]">&gt;nightcore</code> to enhance audio live.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {activeTab === 'antinuke' && (
+          {activeTab === 'music' && (
             <div className="space-y-4">
-              <h2 className="text-2xl font-black text-white">Antinuke Protection</h2>
+              <h2 className="text-2xl font-black text-white">Studio Audio Engine</h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Our Antinuke engine monitors Discord audit logs with zero delay. It halts mass bans, channel purges, webhook creations, and role deletions instantly.
+                Integrated with Lavalink/Wavelink v3, featuring dynamic music card rendering, automated playback recovery, AI recommendations, and 4-row interactive CV2 components.
               </p>
               <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 font-mono text-xs text-red-400 space-y-1">
-                <p>&antinuke enable</p>
-                <p>&antinuke whitelist add @User</p>
-                <p>&antinuke logs #mod-logs</p>
+                <p>&gt;play &lt;song name or link&gt;</p>
+                <p>&gt;queue</p>
+                <p>&gt;loop track | queue | off</p>
+                <p>&gt;autoplay</p>
               </div>
             </div>
           )}
 
-          {activeTab !== 'getting-started' && activeTab !== 'antinuke' && (
+          {activeTab === 'filters' && (
             <div className="space-y-4">
-              <h2 className="text-2xl font-black text-white">{topics.find(t => t.id === activeTab)?.title}</h2>
+              <h2 className="text-2xl font-black text-white">DSP Audio Equalizer</h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Configure this module visually through your {botName} Dashboard or via standard Discord prefix commands.
+                Transform any voice channel stream with 15+ real-time hardware audio filters without stream stutter or audio lag.
               </p>
-              <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 text-xs text-slate-300">
-                Full documentation and schema options for this subsystem are synced in real-time with the web control panel.
+              <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 font-mono text-xs text-red-400 space-y-1">
+                <p>&gt;8d (rotating surround sound)</p>
+                <p>&gt;bassboost soft | hard | extreme</p>
+                <p>&gt;nightcore | vaporwave</p>
+                <p>&gt;clearfilters</p>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'alerts' && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-black text-white">Social Stream Alerts</h2>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Automated background monitors notify your community the second video uploads or Twitch livestreams launch.
+              </p>
+              <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 font-mono text-xs text-red-400 space-y-1">
+                <p>&gt;setnotif youtube @StreamRole #announcements</p>
+                <p>&gt;setnotif twitch @StreamRole #announcements</p>
+                <p>&gt;setnotif list</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'safety' && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-black text-white">Chat Safety & Staff Dispatch</h2>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Instant keyword blocklist with administrator bypass and a direct staff DM alert channel.
+              </p>
+              <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 font-mono text-xs text-red-400 space-y-1">
+                <p>&gt;blacklistword add &lt;word&gt;</p>
+                <p>&gt;blacklistword bypass add &lt;@role&gt;</p>
+                <p>&gt;dm_staff &lt;urgent report&gt;</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'utilities' && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-black text-white">Server Utilities</h2>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Visual modal embed designer, natural colloquial Hinglish translator, and interactive satellite imagery.
+              </p>
+              <div className="p-4 rounded-xl bg-[#08090e] border border-slate-800 font-mono text-xs text-red-400 space-y-1">
+                <p>&gt;embed</p>
+                <p>&gt;hinglish kya haal chal bhai</p>
+                <p>&gt;map Tokyo</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'recovery' && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-black text-white">Uninterrupted Session Recovery</h2>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                {botName} persists live playback positions, queued tracks, voice channel sessions, loop modes, and filters across host restarts. Playback seamlessly resumes right where it left off.
+              </p>
             </div>
           )}
         </div>

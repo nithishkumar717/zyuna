@@ -20,28 +20,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
-  ShieldCheck, 
-  Ticket, 
-  BarChart4, 
-  FileText, 
-  Settings,
   Layers,
-  Sword,
-  Activity,
-  SmilePlus,
-  Rocket,
-  Shield,
-  MessageSquare,
-  Sparkles,
-  Link as LinkIcon,
-  Bot,
+  Headphones,
+  ShieldCheck,
+  Bell,
+  Settings,
   ChevronLeft,
-  ChevronRight,
-  Volume2,
-  Link2,
-  Zap,
-  Mic,
-  Mail
+  ChevronRight
 } from "lucide-react";
 
 interface Tab {
@@ -66,24 +51,11 @@ export function GuildTabs({ guildId }: { guildId: string }) {
 
   const tabs: Tab[] = [
     { name: "Overview", href: `/dashboard/guild/${guildId}`, icon: Layers },
-    { name: "Anti-Nuke", href: `/dashboard/guild/${guildId}/antinuke`, icon: Sword },
-    { name: "Automod", href: `/dashboard/guild/${guildId}/automod`, icon: ShieldCheck },
-    { name: "Tickets", href: `/dashboard/guild/${guildId}/tickets`, icon: Ticket },
-    { name: "Verification", href: `/dashboard/guild/${guildId}/verification`, icon: Shield },
-    { name: "Welcome", href: `/dashboard/guild/${guildId}/welcome`, icon: SmilePlus },
-    { name: "Invites", href: `/dashboard/guild/${guildId}/invites`, icon: LinkIcon },
-    { name: "Auto Role", href: `/dashboard/guild/${guildId}/autorole`, icon: Bot },
-    { name: "Reaction Roles", href: `/dashboard/guild/${guildId}/reactionroles`, icon: Activity },
-    { name: "Join to Create", href: `/dashboard/guild/${guildId}/j2c`, icon: Mic },
-    { name: "Voice Role", href: `/dashboard/guild/${guildId}/invcrole`, icon: Volume2 },
-    { name: "Vanity Roles", href: `/dashboard/guild/${guildId}/vanityroles`, icon: Link2 },
-    { name: "Auto React", href: `/dashboard/guild/${guildId}/autoreact`, icon: Zap },
-    { name: "Custom Roles", href: `/dashboard/guild/${guildId}/customroles`, icon: Sparkles },
-    { name: "Join DM", href: `/dashboard/guild/${guildId}/joindm`, icon: Mail },
-    { name: "Leveling", href: `/dashboard/guild/${guildId}/leveling`, icon: BarChart4 },
-    { name: "Logging", href: `/dashboard/guild/${guildId}/logging`, icon: FileText },
+    { name: "Studio Audio", href: `/dashboard/guild/${guildId}/music`, icon: Headphones },
+    { name: "Chat Safety", href: `/dashboard/guild/${guildId}/safety`, icon: ShieldCheck },
+    { name: "Social Alerts", href: `/dashboard/guild/${guildId}/alerts`, icon: Bell },
     { name: "Settings", href: `/dashboard/guild/${guildId}/settings`, icon: Settings },
-  ].filter(tab => tab.href); // Filter out any undefined hrefs
+  ];
 
   return (
     <div className="relative group/tabs flex items-center w-full mb-8 sticky top-[64px] z-20 transition-all duration-300">

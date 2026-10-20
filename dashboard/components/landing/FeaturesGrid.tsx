@@ -2,18 +2,15 @@
 
 import React, { useState } from 'react';
 import { 
-  ShieldAlert, 
-  ShieldCheck, 
-  UserPlus, 
-  Gift, 
-  Wrench, 
-  Check, 
-  Zap, 
-  Sliders, 
   Headphones, 
+  Sliders, 
+  ShieldCheck, 
+  Bell, 
+  Wrench, 
   Clock, 
-  Key, 
-  Shield 
+  Check, 
+  Sparkles,
+  Gamepad2
 } from 'lucide-react';
 
 interface FeaturesGridProps {
@@ -21,95 +18,95 @@ interface FeaturesGridProps {
 }
 
 export const FeaturesGrid: React.FC<FeaturesGridProps> = ({ onSelectFeatureTab }) => {
-  const [activeCategory, setActiveCategory] = useState<string>('Automod');
+  const [activeCategory, setActiveCategory] = useState<string>('Studio Audio');
 
   const categories = [
-    { name: 'Automod', icon: Zap },
-    { name: 'Moderation', icon: ShieldCheck },
-    { name: 'Utilities', icon: Wrench },
-    { name: 'Welcoming', icon: UserPlus },
-    { name: 'Custom Roles', icon: Key },
-    { name: 'Giveaways', icon: Gift },
-    { name: 'Music', icon: Headphones }
+    { name: 'Studio Audio', icon: Headphones },
+    { name: 'Audio FX Filters', icon: Sliders },
+    { name: 'Chat Safety', icon: ShieldCheck },
+    { name: 'Social Alerts', icon: Bell },
+    { name: 'Server Utilities', icon: Wrench },
+    { name: 'Mini Games', icon: Gamepad2 },
+    { name: 'Telemetry & Uptime', icon: Clock }
   ];
 
   const cards = [
     {
-      id: 'security',
-      title: 'Advanced Security',
-      description: 'Comprehensive protection with antinuke systems, whitelist management, and emergency lockdown capabilities to safeguard your community.',
-      icon: Shield,
-      accentColor: 'text-red-400',
-      badgeBg: 'bg-red-500/10 border-red-500/30',
+      id: 'music',
+      title: 'Studio Audio Engine',
+      description: 'Ultra-low latency audio playback powered by Wavelink v3 with dynamic Yuna player cards, AI track suggestions, and uninterrupted restart recovery.',
+      icon: Headphones,
+      accentColor: 'text-rose-400',
+      badgeBg: 'bg-rose-500/10 border-rose-500/30',
       bullets: [
-        'Antinuke & Limit Protection',
-        'Emergency Mode',
-        'Anti-betray & Auto Emergency'
+        'Yuna-Style Dynamic Music Cards',
+        'Uninterrupted Session Recovery',
+        'Spotify & YouTube Lossless Streaming'
       ]
     },
     {
-      id: 'moderation',
-      title: 'Smart Moderation',
-      description: 'Intelligent moderation tools with automated systems, custom filters, and comprehensive logging for effective community management.',
-      icon: ShieldAlert,
-      accentColor: 'text-cyan-400',
-      badgeBg: 'bg-cyan-500/10 border-cyan-500/30',
-      bullets: [
-        'Auto Moderation',
-        'Powerful Moderation Tools',
-        'Admin & Moderation Setup'
-      ]
-    },
-    {
-      id: 'giveaway',
-      title: 'Advanced Giveaway',
-      description: 'Run engaging contests with automated winner selection, multiple requirements, and seamless participation.',
-      icon: Gift,
-      accentColor: 'text-purple-400',
-      badgeBg: 'bg-purple-500/10 border-purple-500/30',
-      bullets: [
-        'Premium Giveaway',
-        'Entry Role Requirements',
-        'Winner\'s Ticket System'
-      ]
-    },
-    {
-      id: 'utilities',
-      title: 'Powerful Utilities',
-      description: 'Essential tools for server management including info, roles management, automation, voice management, and more.',
-      icon: Wrench,
-      accentColor: 'text-blue-400',
-      badgeBg: 'bg-blue-500/10 border-blue-500/30',
-      bullets: [
-        'Server Analytics',
-        'Voice Management',
-        'Automations'
-      ]
-    },
-    {
-      id: 'customization',
-      title: 'Deep Customization',
-      description: 'Tailor every aspect to your server with custom roles, automated responses & reactions, and personalized welcome systems.',
+      id: 'filters',
+      title: 'Audio FX DSP Filters',
+      description: 'Transform your listening experience in real-time with 15+ hardware-accelerated digital signal processing audio presets.',
       icon: Sliders,
       accentColor: 'text-amber-400',
       badgeBg: 'bg-amber-500/10 border-amber-500/30',
       bullets: [
-        'Welcome System',
-        'Custom Roles',
-        'Auto Responders & Reactions'
+        '8D Audio & Surround Sound',
+        'Dynamic Bassboost & Treblebass',
+        'Nightcore, Vaporwave & Karaoke'
+      ]
+    },
+    {
+      id: 'safety',
+      title: 'Chat Safety & Moderation',
+      description: 'Instant word filtering with admin bypass controls, staff dispatch direct messaging, and message tracking.',
+      icon: ShieldCheck,
+      accentColor: 'text-emerald-400',
+      badgeBg: 'bg-emerald-500/10 border-emerald-500/30',
+      bullets: [
+        'Word Blacklist with Role Bypasses',
+        'Staff Emergency Dispatch (>dm_staff)',
+        'Server Message Tracking'
+      ]
+    },
+    {
+      id: 'alerts',
+      title: 'Social Stream Alerts',
+      description: 'Automated push alerts for YouTube uploads and Twitch streams with zero delay and rich preview embeds.',
+      icon: Bell,
+      accentColor: 'text-purple-400',
+      badgeBg: 'bg-purple-500/10 border-purple-500/30',
+      bullets: [
+        'YouTube Video & Stream Webhooks',
+        'Twitch Instant Go-Live Alerts',
+        'Custom Ping Roles & Channels'
+      ]
+    },
+    {
+      id: 'utilities',
+      title: 'Server Utilities',
+      description: 'Interactive visual embed designer, Hinglish natural translator, satellite maps, and webhook generator.',
+      icon: Wrench,
+      accentColor: 'text-blue-400',
+      badgeBg: 'bg-blue-500/10 border-blue-500/30',
+      bullets: [
+        'Visual Embed Builder (>embed)',
+        'Hinglish to English Translator',
+        'Interactive Satellite Map Viewer'
       ]
     },
     {
       id: 'reliability',
-      title: '24/7 Reliability',
-      description: 'Industry-leading uptime with round-the-clock monitoring and dedicated support team ready to assist you.',
+      title: '24/7 Resilience',
+      description: 'Rock-solid uptime with state persistence, auto-git updates, cluster telemetry, and low latency Discord gateway connections.',
       icon: Clock,
-      accentColor: 'text-rose-400',
-      badgeBg: 'bg-rose-500/10 border-rose-500/30',
+      accentColor: 'text-cyan-400',
+      badgeBg: 'bg-cyan-500/10 border-cyan-500/30',
       bullets: [
-        '99.99% Uptime',
-        '24/7 Support',
-        'Active Monitoring'
+        'Automatic State Recovery Across Reboots',
+        'Live Cluster Telemetry & Health Checks',
+        'Fast Edge-Synchronized Web Dashboard'
       ]
     }
   ];
@@ -134,7 +131,7 @@ export const FeaturesGrid: React.FC<FeaturesGridProps> = ({ onSelectFeatureTab }
           </h2>
           
           <p className="mt-3 text-sm sm:text-base text-slate-400">
-            Everything your Discord server needs, engineered with precision and built for massive scaling.
+            High-fidelity studio audio, DSP filters, stream monitors, and essential server tools engineered with precision.
           </p>
         </div>
 

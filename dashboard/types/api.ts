@@ -8,14 +8,14 @@
  * ║           © 2026 Nerd X Live — All Rights Reserved              ║
  * ║                                                                  ║
  * ║   discord  ──  https://discord.gg/YzHCx5yQXv                    ║
- * ║   github   ──  https://github.com/nithishkumar717/yuna-bot      ║
+ * ║   github   ──  https://github.com/nithishkumar717/zyuna         ║
  * ║                                                                  ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
 export interface BotInfo {
   name: string;
-  id: number | null;
+  id: string | null;
   guilds: number;
   users: number;
   commands: number;
@@ -24,7 +24,7 @@ export interface BotInfo {
 
 export interface BotStatus {
   user: string;
-  id: number | null;
+  id: string | null;
   latency: number;
   guild_count: number;
   user_count: number;
@@ -32,128 +32,36 @@ export interface BotStatus {
 }
 
 export interface GuildSummary {
-  id: number;
+  id: string;
   name: string;
   icon_url: string | null;
-  owner_id: number;
+  owner_id: string;
   member_count: number;
 }
 
 export interface GuildDetails {
-  id: number;
+  id: string;
   name: string;
   icon: string | null;
-  owner_id: number;
+  owner_id: string;
   member_count: number;
   role_count: number;
   channel_count: number;
 }
 
 export interface PrefixConfig {
-  guild_id: number;
+  guild_id: number | string;
   prefix: string;
 }
 
-export interface AutomodConfig {
-  guild_id: number;
-  enabled: boolean;
-  punishments: Record<string, string>;
-  ignored_roles: number[];
-  ignored_channels: number[];
-  logging_channel: number | null;
-}
-
-export interface TicketCategory {
-  name: string;
-  emoji: string | null;
-  staff_roles: number[];
-  button_style?: number;
-  discord_category_id?: string | null;
-}
-
-export interface TicketEmbed {
-  title: string | null;
-  description: string | null;
-  color?: number | null;
-  image_url?: string | null;
-  thumbnail_url?: string | null;
-}
-
-export interface TicketConfig {
-  guild_id: string;
-  panel_channel: string | null;
-  panel_message: string | null;
-  logging_channel?: string | null;
-  closed_category?: string | null;
-  panel_type?: string;
-  embed: TicketEmbed;
-  categories: TicketCategory[];
-  staff_roles: number[];
-  open_ticket_count: number;
-}
-
-export interface LevelingEmbedStyle {
-  color: string;
-  thumbnail: boolean;
-  image: string | null;
-}
-
-export interface LevelingConfig {
-  guild_id: number;
-  enabled: boolean;
-  xp_per_message: number;
-  cooldown: number;
-  level_up_channel: number | null;
-  embed_style: LevelingEmbedStyle;
-}
-
-export interface LoggingConfig {
-  guild_id: number;
-  log_enabled: Record<string, boolean>;
-  log_channels: Record<string, number>;
-  ignore_channels: number[];
-  ignore_roles: number[];
-  ignore_users: number[];
-  auto_delete_duration: number | null;
-}
-
-// Update Request Types
 export interface PrefixUpdate {
   prefix: string;
-}
-
-export interface AutomodUpdate {
-  enabled?: boolean;
-  punishments?: Record<string, string>;
-  ignored_roles?: number[];
-  ignored_channels?: number[];
-  logging_channel?: number;
-}
-
-export interface LevelingUpdate {
-  enabled?: boolean;
-  xp_per_message?: number;
-  cooldown?: number;
-  level_up_channel?: number;
-  embed_color?: string;
-}
-
-export interface LoggingUpdate {
-  log_enabled?: Record<string, boolean>;
-  log_channels?: Record<string, number>;
-}
-
-export interface LeaderboardEntry {
-  user_id: number;
-  name: string;
-  level: number;
-  xp: number;
 }
 
 export interface DiscordChannel {
   id: string;
   name: string;
-  type: string;
+  type: number;
 }
 
 export interface DiscordRole {
@@ -163,95 +71,70 @@ export interface DiscordRole {
   position: number;
 }
 
-export interface TicketUpdate {
-  panel_channel?: string | null;
-  logging_channel?: string | null;
-  closed_category?: string | null;
-  panel_type?: string;
-  embed_title?: string | null;
-  embed_description?: string | null;
-  embed_color?: number | null;
-  embed_image_url?: string | null;
-  embed_thumbnail_url?: string | null;
-  categories?: TicketCategory[];
+// Studio Audio
+export interface MusicTrack {
+  title: string;
+  author: string;
+  uri: string;
+  duration: number;
+  artwork?: string | null;
+  requester?: string | null;
 }
 
-export interface WelcomeEmbedData {
-  message?: string | null;
-  title?: string | null;
-  description?: string | null;
-  color?: string | null;
-  footer_text?: string | null;
-  footer_icon?: string | null;
-  author_name?: string | null;
-  author_icon?: string | null;
-  thumbnail?: string | null;
-  image?: string | null;
-}
-
-export interface WelcomeConfig {
-  guild_id: number;
-  welcome_type?: string | null;
-  welcome_message?: string | null;
-  channel_id?: string | null;
-  embed_data?: WelcomeEmbedData | null;
-  auto_delete_duration?: number | null;
-}
-
-export interface WelcomeUpdate {
-  welcome_type?: string | null;
-  welcome_message?: string | null;
-  channel_id?: number | null;
-  embed_data?: WelcomeEmbedData | null;
-  auto_delete_duration?: number | null;
-}
-
-export interface AntiNukeConfig {
-  guild_id: number;
-  status: boolean;
-  whitelisted_users?: string[];
-}
-
-export interface AntiNukeUpdate {
-  status?: boolean;
-  add_whitelist?: string;
-  remove_whitelist?: string;
-}
-
-export interface VerificationConfig {
-  guild_id: number;
-  verification_channel_id: string | null;
-  verified_role_id: string | null;
-  log_channel_id: string | null;
-  verification_method: string;
-  enabled: boolean;
-}
-
-export interface VerificationUpdate {
-  verification_channel_id?: string | null;
-  verified_role_id?: string | null;
-  log_channel_id?: string | null;
-  verification_method?: string | null;
-  enabled?: boolean | null;
-}
-
-export interface VanityRoleSetup {
-  vanity: string;
-  role_id: string;
-  log_channel_id: string;
-}
-
-export interface AutoRoleConfig {
+export interface MusicPlayerState {
   guild_id: string;
-  bots: string[];
-  humans: string[];
+  is_connected: boolean;
+  is_playing: boolean;
+  is_paused: boolean;
+  volume: number;
+  current_track: MusicTrack | null;
+  position: number;
+  loop_mode: string;
+  filter_preset: string;
+  queue: MusicTrack[];
+  voice_channel: string | null;
 }
 
-export interface AutoRoleUpdate {
-  bots?: string[];
-  humans?: string[];
+export interface MusicControlAction {
+  action: "pause" | "resume" | "skip" | "stop" | "set_volume" | "set_filter" | "set_loop";
+  value?: string | number;
 }
 
+// Chat Safety & Moderation
+export interface SafetyConfig {
+  guild_id: string;
+  blacklisted_words: string[];
+  bypass_roles: string[];
+  bypass_users: string[];
+}
+
+export interface SafetyUpdate {
+  add_word?: string;
+  remove_word?: string;
+  add_bypass_role?: string;
+  remove_bypass_role?: string;
+}
+
+// Social Alerts
+export interface SocialAlertItem {
+  id: number;
+  type: "youtube" | "twitch";
+  role_id: string;
+  channel_id: string;
+}
+
+export interface AlertsConfig {
+  guild_id: string;
+  alerts: SocialAlertItem[];
+}
+
+export interface AlertsUpdate {
+  type: "youtube" | "twitch";
+  channel_id: string;
+  role_id: string;
+}
+
+// System Telemetry & Admin
 export interface AdminNodeStatus {
   name: string;
   status: string;
@@ -264,15 +147,17 @@ export interface AdminStats {
   active_servers: string;
   api_latency: string;
   db_size: string;
+  uptime: string;
+  cached_events: string;
   nodes: AdminNodeStatus[];
 }
 
 export interface AdminConfig {
   maintenance_mode: boolean;
-  global_notification: string | null;
+  global_notification: string;
 }
 
 export interface AdminConfigUpdate {
   maintenance_mode?: boolean;
-  global_notification?: string | null;
+  global_notification?: string;
 }

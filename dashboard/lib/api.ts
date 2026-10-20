@@ -8,7 +8,7 @@
  * ║           © 2026 Nerd X Live — All Rights Reserved              ║
  * ║                                                                  ║
  * ║   discord  ──  https://discord.gg/YzHCx5yQXv                    ║
- * ║   github   ──  https://github.com/nithishkumar717/yuna-bot      ║
+ * ║   github   ──  https://github.com/nithishkumar717/zyuna         ║
  * ║                                                                  ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
@@ -19,35 +19,27 @@ import {
   GuildSummary, 
   GuildDetails,
   PrefixConfig, 
-  AutomodConfig, 
-  TicketConfig, 
-  LevelingConfig, 
-  LoggingConfig,
-  PrefixUpdate,
-  AutomodUpdate,
-  LevelingUpdate,
-  LoggingUpdate,
-  LeaderboardEntry,
-  DiscordChannel,
+  DiscordChannel, 
   DiscordRole,
-  AutoRoleConfig,
-  AutoRoleUpdate,
-  AdminStats,
-  AdminConfig,
-  AdminConfigUpdate
+  MusicPlayerState,
+  MusicControlAction,
+  SafetyConfig,
+  SafetyUpdate,
+  AlertsConfig,
+  AlertsUpdate,
+  AdminStats, 
+  AdminConfig, 
+  AdminConfigUpdate 
 } from "@/types/api";
 
 const getBaseUrl = (): string => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== "undefined") {
-    // In browser on HTTPS (e.g. Vercel), if envUrl is HTTP or not provided,
-    // use same-origin /api/v1 so Next.js rewrites it without Mixed Content blocks.
     if (!envUrl || (window.location.protocol === "https:" && envUrl.startsWith("http://"))) {
       return "/api/v1";
     }
     return envUrl;
   }
-  // Server-side (Vercel SSR / Node.js)
   return process.env.BOT_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 };
 
@@ -62,7 +54,7 @@ class ApiError extends Error {
 
 async function request<T>(
   endpoint: string,
-  options: RequestInit & { next?: NextFetchRequestConfig } = {}
+  options: RequestInit & { next?: { revalidate?: number } } = {}
 ): Promise<T> {
   const baseUrl = getBaseUrl().replace(/\/+$/, "");
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
@@ -77,9 +69,6 @@ async function request<T>(
     const response = await fetch(url, {
       ...options,
       headers,
-      // CRITICAL: Never cache mutation responses. For GETs, use revalidate: 0
-      // to always fetch fresh data from the bot API. Caching was causing
-      // saved data to "disappear" on reload because Next.js served stale cache.
       next: options.next || { revalidate: 0 },
     });
 
@@ -102,17 +91,17 @@ async function request<T>(
 }
 
 export const api = {
-  // Bot 
+  // Bot Status & Info
   getBotStatus: () => request<BotStatus>("/bot/status"),
   getBotInfo: () => request<BotInfo>("/bot/info"),
 
   // Guilds
   listGuilds: () => request<GuildSummary[]>("/guilds/"),
-  getGuildDetails: (guildId: string) => request<any>(`/guilds/${guildId}`),
+  getGuildDetails: (guildId: string) => request<GuildDetails>(`/guilds/${guildId}`),
   getChannels: (guildId: string) => request<DiscordChannel[]>(`/guilds/${guildId}/channels`),
   getRoles: (guildId: string) => request<DiscordRole[]>(`/guilds/${guildId}/roles`),
   
-  // Module Configs
+  // Prefix
   getPrefix: (guildId: string) => request<PrefixConfig>(`/guilds/${guildId}/prefix`),
   updatePrefix: (guildId: string, prefix: string) => 
     request<{ status: string; new_prefix: string }>(`/guilds/${guildId}/prefix`, {
@@ -120,131 +109,31 @@ export const api = {
       body: JSON.stringify({ prefix }),
     }),
 
-  getAutomod: (guildId: string) => request<AutomodConfig>(`/guilds/${guildId}/automod`),
-  updateAutomod: (guildId: string, data: Partial<AutomodConfig>) => 
-    request<{ status: string }>(`/guilds/${guildId}/automod`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getTickets: (guildId: string) => request<TicketConfig>(`/guilds/${guildId}/tickets`),
-  updateTickets: (guildId: string, data: any) => 
-    request<{ status: string }>(`/guilds/${guildId}/tickets`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-  
-  getLeveling: (guildId: string) => request<LevelingConfig>(`/guilds/${guildId}/leveling`),
-  updateLeveling: (guildId: string, data: any) => 
-    request<{ status: string }>(`/guilds/${guildId}/leveling`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getLogging: (guildId: string) => request<LoggingConfig>(`/guilds/${guildId}/logging`),
-  updateLogging: (guildId: string, data: any) => 
-    request<{ status: string }>(`/guilds/${guildId}/logging`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getLeaderboard: (guildId: string) => request<LeaderboardEntry[]>(`/guilds/${guildId}/leveling/leaderboard`),
-
-  getWelcome: (guildId: string) => request<any>(`/guilds/${guildId}/welcome`),
-  updateWelcome: (guildId: string, data: any) => 
-    request<{ status: string }>(`/guilds/${guildId}/welcome`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getAntiNuke: (guildId: string) => request<any>(`/guilds/${guildId}/antinuke`),
-  updateAntiNuke: (guildId: string, data: any) => 
-    request<{ status: string }>(`/guilds/${guildId}/antinuke`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getVerification: (guildId: string) => request<any>(`/guilds/${guildId}/verification`),
-  updateVerification: (guildId: string, data: any) => 
-    request<{ status: string }>(`/guilds/${guildId}/verification`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getVanityRoles: (guildId: string) => request<any[]>(`/guilds/${guildId}/vanityroles`),
-  addVanityRole: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/vanityroles`, {
+  // Studio Audio
+  getMusicState: (guildId: string) => request<MusicPlayerState>(`/guilds/${guildId}/music`),
+  controlMusic: (guildId: string, data: MusicControlAction) =>
+    request<{ status: string; detail?: string }>(`/guilds/${guildId}/music/control`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  deleteVanityRole: (guildId: string, vanity: string) =>
-    request<{ status: string }>(`/guilds/${guildId}/vanityroles/${vanity}`, {
-      method: "DELETE",
-    }),
 
-  getAutoRole: (guildId: string) => request<AutoRoleConfig>(`/guilds/${guildId}/autorole`),
-  updateAutoRole: (guildId: string, data: AutoRoleUpdate) =>
-    request<{ status: string }>(`/guilds/${guildId}/autorole`, {
+  // Chat Safety & Moderation
+  getSafetyConfig: (guildId: string) => request<SafetyConfig>(`/guilds/${guildId}/safety`),
+  updateSafetyConfig: (guildId: string, data: SafetyUpdate) =>
+    request<{ status: string }>(`/guilds/${guildId}/safety`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
 
-  getTracking: (guildId: string) => request<any>(`/guilds/${guildId}/tracking`),
-  updateTracking: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/tracking`, {
+  // Social Stream Alerts
+  getAlertsConfig: (guildId: string) => request<AlertsConfig>(`/guilds/${guildId}/alerts`),
+  updateAlertsConfig: (guildId: string, data: AlertsUpdate) =>
+    request<{ status: string }>(`/guilds/${guildId}/alerts`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
 
-  getJ2C: (guildId: string) => request<any>(`/guilds/${guildId}/j2c`),
-  updateJ2C: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/j2c`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getJoinDM: (guildId: string) => request<any>(`/guilds/${guildId}/joindm`),
-  updateJoinDM: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/joindm`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getCustomRoles: (guildId: string) => request<any>(`/guilds/${guildId}/customroles`),
-  updateCustomRoles: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/customroles`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getAutoReact: (guildId: string) => request<any>(`/guilds/${guildId}/autoreact`),
-  updateAutoReact: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/autoreact`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getInvcRole: (guildId: string) => request<any>(`/guilds/${guildId}/invcrole`),
-  updateInvcRole: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/invcrole`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  getRR: (guildId: string) => request<any>(`/guilds/${guildId}/reactionroles`),
-  updateRR: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/reactionroles`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-  getInvites: (guildId: string) => request<any>(`/guilds/${guildId}/invites`),
-  updateInvites: (guildId: string, data: any) =>
-    request<{ status: string }>(`/guilds/${guildId}/invites`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-
-  // Admin
+  // Admin Telemetry & Control
   getAdminStats: () => request<AdminStats>("/admin/stats"),
   getAdminConfig: () => request<AdminConfig>("/admin/config"),
   updateAdminConfig: (data: AdminConfigUpdate) => 

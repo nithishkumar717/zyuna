@@ -8,32 +8,56 @@
  * ║           © 2026 Nerd X Live — All Rights Reserved              ║
  * ║                                                                  ║
  * ║   discord  ──  https://discord.gg/YzHCx5yQXv                    ║
- * ║   github   ──  https://github.com/nithishkumar717/yuna-bot      ║
+ * ║   github   ──  https://github.com/nithishkumar717/zyuna         ║
  * ║                                                                  ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
 import React from "react";
+import Link from "next/link";
 import { 
   Plus, 
-  Settings2, 
   Terminal, 
   Database,
-  Search,
   Zap,
   ShieldCheck,
-  Ticket,
-  BarChart4,
-  FileText,
-  Activity
+  Headphones,
+  Bell,
+  Wrench,
+  Activity,
+  ArrowRight
 } from "lucide-react";
 
 export default function GuildOverviewPage({ params }: { params: { guildId: string } }) {
   const modules = [
-    { title: "Auto Moderation", desc: "Anti-spam, bad words, and links protection.", icon: ShieldCheck, status: "Active" },
-    { title: "Ticket System", desc: "Helpdesk for user support and inquiries.", icon: Ticket, status: "Configured" },
-    { title: "Leveling", desc: "Gamify your community with XP and ranks.", icon: BarChart4, status: "Active" },
-    { title: "Event Logging", desc: "Detailed audit logs for every server event.", icon: FileText, status: "Active" },
+    { 
+      title: "Studio Audio", 
+      desc: "Wavelink high-fidelity audio engine, Yuna-styled player cards, and DSP filters.", 
+      icon: Headphones, 
+      status: "Active",
+      href: `/dashboard/guild/${params.guildId}/music`
+    },
+    { 
+      title: "Chat Safety", 
+      desc: "Blacklist word engine, bypass roles, and staff emergency dispatch.", 
+      icon: ShieldCheck, 
+      status: "Active",
+      href: `/dashboard/guild/${params.guildId}/safety`
+    },
+    { 
+      title: "Social Alerts", 
+      desc: "Instant live stream push alerts for YouTube and Twitch channels.", 
+      icon: Bell, 
+      status: "Active",
+      href: `/dashboard/guild/${params.guildId}/alerts`
+    },
+    { 
+      title: "Server Utilities", 
+      desc: "Visual embed builder, Hinglish translator, satellite map viewer, and webhooks.", 
+      icon: Wrench, 
+      status: "Active",
+      href: `/dashboard/guild/${params.guildId}/settings`
+    },
   ];
 
   return (
@@ -44,23 +68,32 @@ export default function GuildOverviewPage({ params }: { params: { guildId: strin
           <div className="flex items-center gap-2 mb-6">
             <h2 className="text-xl font-bold text-white tracking-tight">Active Modules</h2>
             <div className="h-[2px] flex-1 bg-slate-800" />
-            <Plus className="h-4 w-4 text-slate-600 cursor-pointer hover:text-white transition-colors" />
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {modules.map((mod) => (
-              <div key={mod.title} className="bg-[#141B2D] border border-slate-800 p-5 rounded-2xl group hover:border-slate-600 transition-all shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-10 w-10 bg-slate-800 rounded-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                    <mod.icon className="h-5 w-5" />
+              <Link 
+                key={mod.title} 
+                href={mod.href}
+                className="bg-[#141B2D] border border-slate-800 p-5 rounded-2xl group hover:border-slate-600 transition-all shadow-sm hover:scale-[1.02] flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="h-10 w-10 bg-slate-800 rounded-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                      <mod.icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      {mod.status}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    {mod.status}
-                  </span>
+                  <h3 className="font-bold text-white mb-1">{mod.title}</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed mb-4">{mod.desc}</p>
                 </div>
-                <h3 className="font-bold text-white mb-1">{mod.title}</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">{mod.desc}</p>
-              </div>
+                <div className="flex items-center gap-1 text-[11px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span>Configure</span>
+                  <ArrowRight className="h-3 w-3" />
+                </div>
+              </Link>
             ))}
           </div>
         </section>
@@ -78,7 +111,7 @@ export default function GuildOverviewPage({ params }: { params: { guildId: strin
             <div className="space-y-1.5 opacity-80">
               <p className="text-slate-500">[{new Date().toLocaleTimeString()}] <span className="text-emerald-500">INIT</span> Dashboard connected to WebSocket pool...</p>
               <p className="text-slate-500">[{new Date().toLocaleTimeString()}] <span className="text-primary">INFO</span> Fetching guild_config from primary database...</p>
-              <p className="text-slate-500">[{new Date().toLocaleTimeString()}] <span className="text-emerald-500">DONE</span> Cache synchronized successfully.</p>
+              <p className="text-slate-500">[{new Date().toLocaleTimeString()}] <span className="text-emerald-500">DONE</span> Audio session recovery cache synchronized.</p>
               <p className="text-slate-400 animate-pulse">_</p>
             </div>
           </div>
@@ -92,12 +125,12 @@ export default function GuildOverviewPage({ params }: { params: { guildId: strin
             <Database className="h-48 w-48 text-white" />
           </div>
           <h2 className="text-2xl font-black text-white mb-2 italic tracking-tighter">Database Status</h2>
-          <p className="text-slate-400 text-sm mb-8 max-w-[280px]">All guild data is encrypted and replicated across our high-performance edge network.</p>
+          <p className="text-slate-400 text-sm mb-8 max-w-[280px]">All guild data and audio cache are encrypted and synchronized across our low-latency edge network.</p>
           
           <div className="space-y-4 relative z-10">
             {[
               { label: 'Uptime', value: '99.98%', icon: Zap },
-              { label: 'Sync Delay', value: '12ms', icon: Activity },
+              { label: 'Sync Delay', value: '8ms', icon: Activity },
               { label: 'Region', value: 'Global Edges', icon: GlobalizationIcon }
             ].map((stat) => (stat.icon && 
               <div key={stat.label} className="flex items-center justify-between p-4 bg-black/20 backdrop-blur-md rounded-2xl border border-white/5">

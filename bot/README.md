@@ -11,7 +11,6 @@
 
 <h3>Zyuna Bot — Python Discord Bot + FastAPI Backend</h3>
 
-
 <p>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white"/></a>
   <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white"/></a>
@@ -29,308 +28,73 @@
 
 ## ✦ Overview
 
-This folder contains the Zyuna Discord bot built on `discord.py v2` alongside a `FastAPI` backend that powers the web dashboard. Everything runs from a single `python zyuna.py` command.
+This directory contains the Zyuna Discord bot engine built on `discord.py v2` along with the high-performance `FastAPI` service that communicates with the Next.js web dashboard. Everything starts seamlessly from `python zyuna.py`.
 
 ```
 bot/
-├── api/                   FastAPI backend (routes, schemas, db manager)
-│   └── routes/            /bot  /guilds  /admin
+├── api/                   FastAPI REST backend (/bot, /guilds, /admin)
+│   ├── routes/            Modular route handlers
+│   ├── db_manager.py      Persistent connection pool
+│   ├── schemas.py         Pydantic v2 data models
+│   └── server.py          Uvicorn server lifecycle
 ├── cogs/
-│   ├── antinuke/          Antinuke protection event listeners
-│   ├── automod/           Automod enforcement event listeners
-│   ├── commands/          All slash & prefix command modules
-│   ├── events/            General Discord event listeners
-│   ├── moderation/        Moderation action modules
-│   └── zyuna/             Core Zyuna feature cogs
-├── core/                  Bot client, context, cog base classes
-├── games/                 Standalone game logic + button views
-├── utils/                 Emoji, tools, sync, Cloudflare tunnel
-├── assets/                Fonts, backgrounds, GIFs
-└── zyuna.py               Entry point
+│   ├── commands/          Feature command suites (music, filters, Embed, translate, blacklist, notify, stats...)
+│   ├── events/            System, error, and mention event listeners
+│   └── zyuna/             CV2 help category definitions
+├── core/                  AutoShardedBot client, Context, session recovery
+├── utils/                 MusicCardGenerator, CV2 components, emoji mappings, time utils
+├── db/                    Active SQLite databases & session json
+└── zyuna.py               Bot entry point
 ```
 
 ---
 
-## ✦ Features
+## ✦ Active Bot Modules
 
-<table>
-<tr>
-<td width="50%">
+1. **Studio Audio (`cogs/commands/music.py`)**:
+   - Wavelink v3 / Lavalink audio pipeline with lossless stream decoding
+   - Dynamic Yuna-styled canvas player card generator (`utils/music_card.py`)
+   - AI recommendation selector (`SuggestedByAISelect`) & 4-row CV2 controls
+   - Uninterrupted audio recovery across host reboots (`db/music_active_sessions.json`)
+   - Spotify listening card (`>spotify`) and Now Playing auto alerts (`>autonp`)
 
-**🛡️ Antinuke**
-- Mass ban, kick, channel & role flood detection
-- Webhook abuse, bot add, prune protection
-- Anti-member update
-- Whitelist / unwhitelist system
-- Emergency lockdown mode
+2. **DSP Audio FX Filters (`cogs/commands/filters.py`)**:
+   - 15+ real-time equalizer filters: 8D, Bassboost, Nightcore, Vaporwave, Pop, Soft, Treblebass, Karaoke, Vibrato, Tremolo, and Studio Flat.
 
-</td>
-<td width="50%">
+3. **Server Utilities (`cogs/commands/Embed.py`, `translate.py`, `map.py`, `youtube.py`)**:
+   - Interactive visual embed designer with live modals
+   - Colloquial Hinglish to English translator
+   - Satellite terrain map viewer
+   - Multi-result YouTube explorer and channel webhook creator/deleter
 
-**🤖 Automod**
-- Anti-spam, anti-caps, anti-links
-- Anti-invites, mass mention, emoji spam
-- Fully configurable per server
-- Works alongside Discord's native automod
+4. **Social Stream Alerts (`cogs/commands/notify.py`)**:
+   - Automated push notifications for YouTube uploads and Twitch livestreams
+   - Role ping mentions and custom announcement channels
 
-</td>
-</tr>
-<tr>
-<td>
+5. **Chat Safety & Server Stats (`cogs/commands/blacklist.py`, `dms.py`, `messages.py`, `msgpack.py`)**:
+   - Forbidden word filter with role bypass exemptions
+   - Staff emergency direct dispatch (`>dm_staff`)
+   - Server message counting and tracking
 
-**🎵 Music**
-- Lavalink v4 powered playback
-- YouTube, SoundCloud, JioSaavn support
-- Queue, loop, shuffle, autoplay
-- Seek, rewind, forward controls
+6. **Mini-Games (`cogs/commands/messages.py`)**:
+   - High-speed reflex reaction test (`>reaction`)
 
-</td>
-<td>
-
-**⚙️ Moderation**
-- Ban, kick, mute, warn, lock, jail
-- Snipe, message management
-- Full logging system
-- Reaction roles, vanity roles, invite tracker
-
-</td>
-</tr>
-<tr>
-<td>
-
-**🎉 Engagement**
-- Leveling & XP with leaderboard
-- Birthday tracker
-- Counting, AFK, autorole, autoresponder
-- Sticky messages, booster perks, giveaways
-
-</td>
-<td>
-
-**🎮 Games**
-- Chess, Battleship, Connect Four
-- Wordle, Typeracer, 2048, Memory
-- Reaction test, RPS, Tic-tac-toe
-- Country guess, Number slider, Lights out
-
-</td>
-</tr>
-<tr>
-<td>
-
-**🌐 API Backend**
-- FastAPI with API key auth
-- SlowAPI rate limiting
-- Structured JSON request logging
-- CORS configured for your dashboard domain
-- `CORS_ORIGINS` env var for extra domains
-
-</td>
-<td>
-
-**🔧 Developer**
-- Jishaku eval support
-- Application emoji auto-sync
-- Slash + prefix commands
-- Cloudflare Tunnel via pycloudflared — zero system installs, unlimited traffic
-- Single `OWNER_IDS` env var controls all permission checks
-- Nerd X Live watermark on every source file
-
-</td>
-</tr>
-</table>
+7. **System Telemetry & Owner Suite (`cogs/commands/stats.py`, `status.py`, `owner.py`, `owner2.py`)**:
+   - Memory usage, ping latency, cluster hardware statistics
+   - Non-blocking hot-reload and safe threaded Git updates (`>gitpull`, `>reload`)
 
 ---
 
-## ✦ Prerequisites
-
-| Requirement | Notes |
-|---|---|
-| Python 3.10+ | — |
-| Lavalink v4 node | for music features |
-| Discord bot token | from Developer Portal |
-| Cloudflare account (free) | for HTTPS tunnel — browser setup only |
-
----
-
-## ✦ Setup
-
-### 1 — Install dependencies
+## ✦ Installation & Run
 
 ```bash
+# Create and activate virtual environment
 python -m venv .venv
+.venv\Scripts\activate   # Windows
 
-# Windows
-.venv\Scripts\activate
-
-# Linux / macOS
-source .venv/bin/activate
-
+# Install requirements
 pip install -r requirements.txt
-```
 
-### 2 — Configure environment
-
-Create a `.env` file (copy from `.env.example`):
-
-```env
-# ── Core ──────────────────────────────────────────────────────────
-TOKEN              = your_discord_bot_token
-brand_name         = 'Zyuna'
-
-# ── Owner IDs (comma-separated — no code changes needed) ──────────
-OWNER_IDS          = 1048900823314354197
-
-# ── Lavalink ──────────────────────────────────────────────────────
-LAVALINK_HOST      = "your-lavalink-host"
-LAVALINK_PASSWORD  = "your_password"
-LAVALINK_SECURE    = "true"
-LAVALINK_PORT      = ""
-
-# ── Emoji Sync ────────────────────────────────────────────────────
-EMOJI_SYNC         = "true"
-
-# ── API / Dashboard Backend ───────────────────────────────────────
-API_ENABLED        = "true"
-API_PORT           = "8000"
-DASHBOARD_API_KEY  = "change_this_to_a_strong_secret"
-CORS_ORIGINS       = ""
-
-# ── Cloudflare Tunnel ─────────────────────────────────────────────
-TUNNEL_ENABLED     = "true"
-CF_TUNNEL_TOKEN    = "your_tunnel_token"
-CF_TUNNEL_URL      = "https://api.yourdomain.com"
-
-# ── Webhooks ──────────────────────────────────────────────────────
-WEBHOOK_URL        = "https://discord.com/api/webhooks/..."
-```
-
-### 3 — Run
-
-```bash
+# Start bot and API backend
 python zyuna.py
 ```
-
----
-
-## ✦ Environment Reference
-
-| Variable | Default | Description |
-|---|---|---|
-| `TOKEN` | — | Discord bot token |
-| `OWNER_IDS` | — | Comma-separated owner Discord user IDs |
-| `LAVALINK_HOST` | — | Lavalink server hostname (no protocol) |
-| `LAVALINK_PASSWORD` | — | Lavalink password |
-| `LAVALINK_SECURE` | `true` | `true` = HTTPS, `false` = HTTP |
-| `LAVALINK_PORT` | _(empty)_ | Port — only when `LAVALINK_SECURE=false` |
-| `EMOJI_SYNC` | `true` | Auto-sync application emojis on startup |
-| `API_ENABLED` | `true` | Start the FastAPI dashboard backend |
-| `API_PORT` | `8000` | Port the backend listens on |
-| `DASHBOARD_API_KEY` | — | Shared secret between bot API and dashboard |
-| `CORS_ORIGINS` | _(empty)_ | Extra CORS-allowed origins, comma-separated |
-| `WEBHOOK_URL` | — | Discord webhook for command logs |
-| `TUNNEL_ENABLED` | `true` | Expose API over HTTPS via Cloudflare Tunnel |
-| `CF_TUNNEL_TOKEN` | — | Token from Cloudflare Zero Trust dashboard |
-| `CF_TUNNEL_URL` | — | Your permanent public URL |
-
----
-
-## ✦ HTTPS Tunnel (Cloudflare)
-
-Uses **pycloudflared** — downloads the `cloudflared` binary automatically on first run. No system installs, no CLI, works on Pterodactyl and any Python host.
-
-**Why Cloudflare over ngrok:**
-
-| | Cloudflare Tunnel | ngrok free |
-|---|---|---|
-| Bandwidth | Unlimited | 1 GB/month |
-| Requests | Unlimited | 10k/month |
-| URL stability | Permanent | Permanent (1 domain) |
-| System install | ❌ Not needed | ❌ Not needed |
-| Cost | Free | Free |
-
-**Setup (browser only — no CLI needed):**
-
-1. Go to [one.dash.cloudflare.com](https://one.dash.cloudflare.com) → **Networks → Tunnels → Create a tunnel**
-2. Choose **Cloudflared**, name it (e.g. `zyuna-api`), save
-3. On **Install connector**, copy the token from the command shown:
-   ```
-   cloudflared tunnel run --token <COPY_THIS_TOKEN>
-   ```
-4. On **Public Hostname** tab → add a hostname:
-   - Subdomain: `api` · Domain: `yourdomain.com` · Service: `http://localhost:8000`
-5. Add to `.env`:
-   ```env
-   CF_TUNNEL_TOKEN = "eyJhIjoiXXXX..."
-   CF_TUNNEL_URL   = "https://api.yourdomain.com"
-   ```
-
-On every startup the console prints:
-```
-◈ Tunnel: cloudflared binary ready — starting tunnel on port 8000…
-◈ Tunnel: API is live at  https://api.yourdomain.com
-  ↳ NEXT_PUBLIC_API_URL = https://api.yourdomain.com/api/v1
-```
-
-Set `TUNNEL_ENABLED=false` to disable.
-
----
-
-## ✦ Emoji Sync
-
-When `EMOJI_SYNC=true`, the bot syncs application emojis on every startup:
-
-| Event | Action |
-|---|---|
-| New emoji found | Uploaded to application, ID written to `emoji.py` |
-| Stale ID detected | `emoji.py` patched automatically |
-| No changes | Sync completes instantly, no restart |
-| After any patch | Bot restarts so fresh IDs are live |
-
----
-
-## ✦ Deployment
-
-Upload the entire `bot/` folder to your host and set the start command to:
-
-```bash
-python zyuna.py
-```
-
-`pycloudflared` downloads the binary on first run — no extra steps on any host.
-
-> Recommended free hosts: Render · Railway · Fly.io · Pterodactyl
->
-
----
-
-## ✦ Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| Bot fails to start | Check `TOKEN` and gateway intents in Developer Portal |
-| Music not working | Verify `LAVALINK_HOST`, `LAVALINK_SECURE`, `LAVALINK_PORT` |
-| Dashboard can't reach API | Check `API_ENABLED=true` and `NEXT_PUBLIC_API_URL` in dashboard |
-| CORS errors | Add your Vercel URL to `CORS_ORIGINS` in `.env` |
-| Emojis showing as plain text | Run once with `EMOJI_SYNC=true` to upload and patch IDs |
-| Tunnel not starting | Check `CF_TUNNEL_TOKEN` is valid and `pycloudflared` is installed |
-| Want to add an owner | Add their ID to `OWNER_IDS` in `.env` — no code changes needed |
-
----
-
-<div align="center">
-
-## ✦ Nerd X Live
-
-*Built for protection. Designed for style.*
-
-<a href="https://discord.gg/YzHCx5yQXv"><img src="https://discord.com/api/guilds/1525481611116806185/widget.png?style=banner2" alt="Yuna Discord Support Server" width="480"/></a>
-
-<p>
-  <a href="https://discord.gg/YzHCx5yQXv"><img src="https://img.shields.io/badge/Discord-Join_Server-5865F2?style=for-the-badge&logo=discord&logoColor=white"/></a>
-  <a href="https://github.com/nithishkumar717/zyuna"><img src="https://img.shields.io/badge/GitHub-Zyuna-181717?style=for-the-badge&logo=github&logoColor=white"/></a>
-</p>
-
-© 2026 Nerd X Live — MIT License
-
-</div>
