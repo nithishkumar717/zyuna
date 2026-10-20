@@ -430,7 +430,7 @@ class MusicControlView(LayoutView):
         self.btn_play_pause = ui.Button(emoji="<:playpause:1562110926419791923>", style=discord.ButtonStyle.secondary, custom_id="btn_play_pause")
         self.btn_play_pause.callback = self._cb_pause
 
-        self.btn_skip = ui.Button(emoji="<:next:1560892395837591592>", style=discord.ButtonStyle.secondary, custom_id="btn_skip")
+        self.btn_skip = ui.Button(emoji="<:next:1562112759498416229>", style=discord.ButtonStyle.secondary, custom_id="btn_skip")
         self.btn_skip.callback = self._cb_skip
 
         r1 = ui.ActionRow(self.btn_loop, self.btn_prev, self.btn_play_pause, self.btn_skip)
@@ -453,13 +453,13 @@ class MusicControlView(LayoutView):
         container.add_item(r2)
 
         # ── ROW 3: Shuffle, Search, Favorite & History (4 buttons) ──
-        self.btn_shuffle = ui.Button(emoji="<:shuffle:1560892674255491172>", style=discord.ButtonStyle.secondary, custom_id="btn_shuffle")
+        self.btn_shuffle = ui.Button(emoji="<:shuffle:1562112767484239894>", style=discord.ButtonStyle.secondary, custom_id="btn_shuffle")
         self.btn_shuffle.callback = self._cb_shuffle
 
         self.btn_search = ui.Button(emoji="<:musicsearch:1562111042555740331>", style=discord.ButtonStyle.secondary, custom_id="btn_search")
         self.btn_search.callback = self._cb_search
 
-        self.btn_favorite = ui.Button(emoji="<a:heart:1562111081789395115>", style=discord.ButtonStyle.secondary, custom_id="btn_favorite")
+        self.btn_favorite = ui.Button(emoji="<a:heart:1562113133575933972>", style=discord.ButtonStyle.secondary, custom_id="btn_favorite")
         self.btn_favorite.callback = self._cb_favorite
 
         self.btn_history = ui.Button(emoji="<:history:1562111095164903484>", style=discord.ButtonStyle.secondary, custom_id="btn_history")
@@ -603,7 +603,7 @@ class MusicControlView(LayoutView):
         if not await self.interaction_check(interaction): return
         if self.player.queue:
             random.shuffle(self.player.queue)
-            await interaction.response.send_message(f"<:shuffle:1560892674255491172> Queue shuffled by **{interaction.user.display_name}**.", ephemeral=True)
+            await interaction.response.send_message(f"<:shuffle:1562112767484239894> Queue shuffled by **{interaction.user.display_name}**.", ephemeral=True)
         else:
             await interaction.response.send_message("❌ Queue is empty.", ephemeral=True)
 
@@ -615,7 +615,7 @@ class MusicControlView(LayoutView):
         if not await self.interaction_check(interaction): return
         track = self.player.current
         if track:
-            await interaction.response.send_message(f"<a:heart:1562111081789395115> Added **{track.title}** to your favorites!", ephemeral=True)
+            await interaction.response.send_message(f"<a:heart:1562113133575933972> Added **{track.title}** to your favorites!", ephemeral=True)
         else:
             await interaction.response.send_message("❌ No track currently playing.", ephemeral=True)
 
