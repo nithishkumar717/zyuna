@@ -33,7 +33,7 @@ from utils.config import serverLink, websiteLink, BotName, BRAND_NAME
 ACCENT_COLOR = 0xFF2A4D
 
 CORE_LABELS = {
-    "Music Commands", "Verification Commands", "Ticket"
+    "Music Commands"
 }
 
 
