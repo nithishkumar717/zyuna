@@ -16,7 +16,16 @@ import asyncio
 from typing import TYPE_CHECKING, Any, Dict, Optional
 import discord
 from discord.ext import commands
-from discord.ext import menus
+try:
+    from discord.ext import menus
+except (ImportError, ModuleNotFoundError):
+    class _MenusDummy:
+        class PageSource:
+            pass
+        class ListPageSource:
+            pass
+    menus = _MenusDummy()
+
 from discord.ext.commands import Context
 from discord import Interaction, ButtonStyle
 from utils.emoji import REWIND, PREVIOUS, NEXT, FORWARD, DELETE
@@ -26,13 +35,13 @@ class Paginator(discord.ui.View):
 
     def __init__(
         self,
-        source: menus.PageSource,
+        source: Any,
         *,
         ctx: Context | Interaction,
         check_embeds: bool = True,
     ):
         super().__init__()
-        self.source: menus.PageSource = source
+        self.source = source
         self.check_embeds: bool = check_embeds
         self.ctx = ctx
         self.message: Optional[discord.Message] = None
@@ -52,7 +61,6 @@ class Paginator(discord.ui.View):
             self.add_item(self.next_page_button)
             if use_last_and_first:
                 self.add_item(self.last_page_button)
-            #self.add_item(self.stop_button)
 
     async def _get_kwargs_from_page(self, page: int) -> Dict[str, Any]:
         value = await discord.utils.maybe_coroutine(self.source.format_page,
@@ -128,7 +136,6 @@ class Paginator(discord.ui.View):
                         await self.message.edit(view=self)
                     except Exception as e:
                         print(e)
-            
 
     async def on_error(self, interaction: discord.Interaction,
                        error: Exception, item: discord.ui.Item) -> None:
@@ -143,8 +150,6 @@ class Paginator(discord.ui.View):
         """
         Update the button styles and emojis
         """
-
-        # Update the button emojis
         self.first_page_button.emoji = kwargs.get('first_button_emoji') or REWIND
         self.previous_page_button.emoji = kwargs.get(
             'previous_button_emoji') or PREVIOUS
@@ -153,7 +158,6 @@ class Paginator(discord.ui.View):
         self.stop_button.emoji = kwargs.get(
             'stop_button_emoji') or DELETE
 
-        # Update the Button Styles
         self.first_page_button.style = kwargs.get(
             'first_button_style') or ButtonStyle.secondary
         self.previous_page_button.style = kwargs.get(

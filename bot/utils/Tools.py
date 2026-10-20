@@ -32,6 +32,9 @@ try:
 except Exception:
     pass
 
+BOT_DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "db")
+IGNORE_DB_PATH = os.path.join(BOT_DB_DIR, "ignore.db")
+
 async def setup_db():
   async with aiosqlite.connect('db/prefix.db') as db:
     await db.execute('''
@@ -42,8 +45,40 @@ async def setup_db():
     ''')
     await db.commit()
 
+  # The ignore checks run for both message events and command invocation.
+  # Create their tables up front so a fresh/empty database does not make every
+  # command fail before its callback runs.
+  os.makedirs(BOT_DB_DIR, exist_ok=True)
+  async with aiosqlite.connect(IGNORE_DB_PATH) as db:
+    await db.executescript('''
+      CREATE TABLE IF NOT EXISTS ignored_channels (
+        guild_id INTEGER NOT NULL,
+        channel_id INTEGER NOT NULL,
+        PRIMARY KEY (guild_id, channel_id)
+      );
+      CREATE TABLE IF NOT EXISTS ignored_users (
+        guild_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        PRIMARY KEY (guild_id, user_id)
+      );
+      CREATE TABLE IF NOT EXISTS ignored_commands (
+        guild_id INTEGER NOT NULL,
+        command_name TEXT NOT NULL,
+        PRIMARY KEY (guild_id, command_name)
+      );
+      CREATE TABLE IF NOT EXISTS bypassed_users (
+        guild_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        PRIMARY KEY (guild_id, user_id)
+      );
+    ''')
+    await db.commit()
 
-asyncio.run(setup_db())
+
+try:
+    asyncio.run(setup_db())
+except Exception:
+    pass
 
 async def is_topcheck_enabled(guild_id: int):
     async with aiosqlite.connect('db/topcheck.db') as db:
@@ -156,29 +191,31 @@ def blacklist_check():
     
 
 async def get_ignore_data(guild_id: int) -> dict:
-    async with aiosqlite.connect("db/ignore.db") as db:
-        data = {
-            "channel": set(),
-            "user": set(),
-            "command": set(),
-            "bypassuser": set(),
-        }
+    data = {
+        "channel": set(),
+        "user": set(),
+        "command": set(),
+        "bypassuser": set(),
+    }
+    try:
+        async with aiosqlite.connect(IGNORE_DB_PATH) as db:
+            async with db.execute("SELECT channel_id FROM ignored_channels WHERE guild_id = ?", (guild_id,)) as cursor:
+                channels = await cursor.fetchall()
+                data["channel"] = {str(channel_id) for (channel_id,) in channels}
 
-        async with db.execute("SELECT channel_id FROM ignored_channels WHERE guild_id = ?", (guild_id,)) as cursor:
-            channels = await cursor.fetchall()
-            data["channel"] = {str(channel_id) for (channel_id,) in channels}
+            async with db.execute("SELECT user_id FROM ignored_users WHERE guild_id = ?", (guild_id,)) as cursor:
+                users = await cursor.fetchall()
+                data["user"] = {str(user_id) for (user_id,) in users}
 
-        async with db.execute("SELECT user_id FROM ignored_users WHERE guild_id = ?", (guild_id,)) as cursor:
-            users = await cursor.fetchall()
-            data["user"] = {str(user_id) for (user_id,) in users}
+            async with db.execute("SELECT command_name FROM ignored_commands WHERE guild_id = ?", (guild_id,)) as cursor:
+                commands = await cursor.fetchall()
+                data["command"] = {command_name.strip().lower() for (command_name,) in commands}
 
-        async with db.execute("SELECT command_name FROM ignored_commands WHERE guild_id = ?", (guild_id,)) as cursor:
-            commands = await cursor.fetchall()
-            data["command"] = {command_name.strip().lower() for (command_name,) in commands}
-
-        async with db.execute("SELECT user_id FROM bypassed_users WHERE guild_id = ?", (guild_id,)) as cursor:
-            bypass_users = await cursor.fetchall()
-            data["bypassuser"] = {str(user_id) for (user_id,) in bypass_users}
+            async with db.execute("SELECT user_id FROM bypassed_users WHERE guild_id = ?", (guild_id,)) as cursor:
+                bypass_users = await cursor.fetchall()
+                data["bypassuser"] = {str(user_id) for (user_id,) in bypass_users}
+    except Exception:
+        pass
 
     return data
 

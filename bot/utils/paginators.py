@@ -13,13 +13,41 @@
 
 from __future__ import annotations
 import os 
+from typing import Any, Optional, List, Dict
 import discord
 from utils.config import BotName
+
 try:
     from discord.ext import menus
     from discord.ext import commands
-except ModuleNotFoundError:
-    os.system("pip install git+https://github.com/Rapptz/discord-ext-menus")
+except (ImportError, ModuleNotFoundError):
+    class _MenusFallback:
+        class PageSource:
+            pass
+
+        class ListPageSource:
+            def __init__(self, entries: list[Any], *, per_page: int = 10):
+                self.entries = entries
+                self.per_page = per_page
+
+            def is_paginating(self) -> bool:
+                return len(self.entries) > self.per_page
+
+            def get_max_pages(self) -> int:
+                pages, left_over = divmod(len(self.entries), self.per_page)
+                if left_over:
+                    pages += 1
+                return max(1, pages)
+
+            async def _prepare_once(self):
+                pass
+
+            async def get_page(self, page_number: int) -> list[Any]:
+                base = page_number * self.per_page
+                return self.entries[base:base + self.per_page]
+
+    menus = _MenusFallback()
+    from discord.ext import commands
 
 from .paginator import Paginator as EmbedPaginator
 from discord.ext.commands import Context, Paginator as CmdPaginator
@@ -55,7 +83,6 @@ class FieldPagePaginator(menus.ListPageSource):
                 text=text,
                 icon_url=menu.ctx.me.display_avatar.url if hasattr(menu, "ctx") and hasattr(menu.ctx, "me") else None
             )
-            #self.embed.timestamp = discord.utils.utcnow()
         return self.embed
 
 
@@ -95,7 +122,6 @@ class DescriptionEmbedPaginator(menus.ListPageSource):
         self.embed.clear_fields()
 
         self.embed.description = '\n'.join(entries)
-        #self.embed.timestamp = discord.utils.utcnow()
         maximum = self.get_max_pages()
         if maximum > 1:
             text = f'• Page {menu.current_page + 1}/{maximum} | Requested by {menu.ctx.author.display_name}'

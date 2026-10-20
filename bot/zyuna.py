@@ -25,6 +25,11 @@ if sys.platform == "win32":
 
 # Ensure current working dir, script dir, parent dir, and subfolders are in sys.path
 _script_dir = os.path.dirname(os.path.abspath(__file__))
+if _script_dir and os.path.exists(_script_dir):
+    try:
+        os.chdir(_script_dir)
+    except Exception:
+        pass
 _parent_dir = os.path.dirname(_script_dir)
 for _p in [
     _script_dir,
@@ -538,7 +543,7 @@ async def reaction(ctx: Context):
 # --- Main Bot Execution ---
 async def main():
     async with client:
-        os.system("clear")
+        os.system("cls" if os.name == "nt" else "clear")
         await client.load_extension("jishaku")
         
         max_retries = 5
