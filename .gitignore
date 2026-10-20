@@ -65,4 +65,9 @@ __pycache__/
 bin/
 *.exe
 
+# Runtime music presence settings
+/bot/db/music_247_mode.json
+/bot/db/music_247_mode.json.tmp
 
+
+/db/

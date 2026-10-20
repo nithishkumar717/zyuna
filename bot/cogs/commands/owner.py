@@ -12,7 +12,7 @@
 # ╚══════════════════════════════════════════════════════════════════╝
 
 from __future__ import annotations
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import *
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import discord
@@ -198,7 +198,64 @@ class Owner(commands.Cog):
         self.bot_owner_ids = BOT_OWNER_IDS
         self.client.loop.create_task(self.setup_database())
         self.client.loop.create_task(self.load_staff())
+        self.git_auto_watcher.start()
         
+
+
+    def cog_unload(self):
+        self.git_auto_watcher.cancel()
+
+    @tasks.loop(seconds=45)
+    async def git_auto_watcher(self):
+        """Automatically watches GitHub origin/main. When a git push is detected, auto-pulls and restarts!"""
+        if os.getenv("AUTO_GIT_WATCHER", "true").strip().lower() != "true":
+            return
+
+        def _check_and_update():
+            candidates = [
+                os.getcwd(),
+                os.path.dirname(os.path.abspath(__file__)),
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            ]
+            repo_dir = None
+            for d in candidates:
+                if os.path.isdir(os.path.join(d, ".git")):
+                    repo_dir = d
+                    break
+            if not repo_dir:
+                return False, ""
+
+            env = os.environ.copy()
+            env["GIT_TERMINAL_PROMPT"] = "0"
+            env["GIT_PAGER"] = "cat"
+
+            fetch = subprocess.run(["git", "fetch", "origin", "main"], cwd=repo_dir, capture_output=True, text=True, timeout=20, env=env)
+            if fetch.returncode != 0:
+                return False, ""
+
+            local_rev = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_dir, capture_output=True, text=True, env=env).stdout.strip()
+            remote_rev = subprocess.run(["git", "rev-parse", "origin/main"], cwd=repo_dir, capture_output=True, text=True, env=env).stdout.strip()
+
+            if local_rev and remote_rev and local_rev != remote_rev:
+                commit_info = subprocess.run(["git", "log", "-1", "--format=%h - %s", "origin/main"], cwd=repo_dir, capture_output=True, text=True, env=env).stdout.strip()
+                subprocess.run(["git", "merge", "--abort"], cwd=repo_dir, capture_output=True, text=True, env=env)
+                reset = subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=repo_dir, capture_output=True, text=True, env=env)
+                if reset.returncode == 0:
+                    return True, commit_info
+            return False, ""
+
+        try:
+            updated, commit_info = await asyncio.to_thread(_check_and_update)
+            if updated:
+                print(f"\033[36m◈ [Git Watcher] Auto-detected new GitHub commit: {commit_info}\033[0m")
+                print("\033[32m✔ [Git Watcher] Code updated! Restarting bot to apply changes...\033[0m")
+                restart_program()
+        except Exception:
+            pass
+
+    @git_auto_watcher.before_loop
+    async def before_git_auto_watcher(self):
+        await self.client.wait_until_ready()
 
     async def setup_database(self):
         async with aiosqlite.connect(self.db_path) as db:

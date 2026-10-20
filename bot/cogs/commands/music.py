@@ -47,6 +47,7 @@ from typing import cast, Optional, Union, List, Dict, Any
 
 DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "db"))
 SESSIONS_FILE = os.path.join(DB_DIR, "music_active_sessions.json")
+MUSIC_247_FILE = os.path.join(DB_DIR, "music_247_mode.json")
 
 _music_cog_instance = None
 
@@ -604,11 +605,19 @@ class MusicControlView(LayoutView):
         guild_id = self.player.guild.id
         if hasattr(self.player, "queue"):
             self.player.queue.clear()
-        await self.player.disconnect()
         if self.cog and hasattr(self.cog, "remove_session"):
             self.cog.remove_session(guild_id)
+        keep_connected = self.cog and self.cog.is_247_enabled(guild_id)
+        if keep_connected:
+            await self.player.stop()
+        else:
+            await self.player.disconnect()
         embed = discord.Embed(
-            description="<:stopmusic:1562114968646848542> **Stopped playback and cleared the queue.**",
+            description=(
+                "<:stopmusic:1562114968646848542> **Playback stopped and queue cleared. 24/7 mode keeps me connected.**"
+                if keep_connected
+                else "<:stopmusic:1562114968646848542> **Stopped playback and cleared the queue.**"
+            ),
             color=0x2B2D31
         )
         try:
@@ -759,6 +768,8 @@ class Music(commands.Cog):
         self.inactivity_timeout = 120
         self.ai_suggestions = {} 
         self.player_inactivity = {}
+        self._inactivity_tasks = {}
+        self._247_modes = self.load_247_modes()
         self._restoring = False
         self._restored = False
         self._recovery_lock = asyncio.Lock()
@@ -776,6 +787,43 @@ class Music(commands.Cog):
         self.save_all_sessions_sync()
         if hasattr(self, "periodic_save_sessions"):
             self.periodic_save_sessions.cancel()
+
+    def load_247_modes(self) -> Dict[str, int]:
+        try:
+            with open(MUSIC_247_FILE, "r", encoding="utf-8") as file:
+                stored_modes = json.load(file)
+            return {
+                str(int(guild_id)): int(channel_id)
+                for guild_id, channel_id in stored_modes.items()
+            }
+        except (OSError, ValueError, TypeError, AttributeError):
+            return {}
+
+    def save_247_modes(self):
+        try:
+            os.makedirs(DB_DIR, exist_ok=True)
+            temp_file = MUSIC_247_FILE + ".tmp"
+            with open(temp_file, "w", encoding="utf-8") as file:
+                json.dump(self._247_modes, file, indent=2)
+            os.replace(temp_file, MUSIC_247_FILE)
+        except OSError as error:
+            print(f"[Music 24/7] Could not save mode settings: {error}")
+
+    def is_247_enabled(self, guild_id: int) -> bool:
+        return str(guild_id) in self._247_modes
+
+    def enable_247_mode(self, guild_id: int, channel_id: int):
+        self._247_modes[str(guild_id)] = int(channel_id)
+        self.save_247_modes()
+
+    def disable_247_mode(self, guild_id: int):
+        self._247_modes.pop(str(guild_id), None)
+        self.save_247_modes()
+
+    def cancel_inactivity_timer(self, guild_id: int):
+        task = self._inactivity_tasks.pop(guild_id, None)
+        if task and not task.done():
+            task.cancel()
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -1004,10 +1052,8 @@ class Music(commands.Cog):
                 return
 
             sessions = self.load_sessions()
-            if not sessions:
-                return
-
-            print(f"{Fore.CYAN}{Style.BRIGHT}[MUSIC RECOVERY] Found {len(sessions)} active session(s) to restore after restart.")
+            if sessions:
+                print(f"{Fore.CYAN}{Style.BRIGHT}[MUSIC RECOVERY] Found {len(sessions)} active session(s) to restore after restart.")
 
             for guild_id_str, data in list(sessions.items()):
                 try:
@@ -1120,8 +1166,34 @@ class Music(commands.Cog):
                 except Exception as e:
                     print(f"{Fore.RED}[MUSIC RECOVERY ERROR] Failed to restore session for guild {guild_id_str}: {e}")
 
+            await self.restore_247_connections()
+
         finally:
             self._restoring = False  
+
+    async def restore_247_connections(self):
+        for guild_id, channel_id in list(self._247_modes.items()):
+            guild = self.client.get_guild(int(guild_id))
+            if not guild or guild.voice_client:
+                continue
+
+            voice_channel = guild.get_channel(channel_id)
+            if not isinstance(voice_channel, (discord.VoiceChannel, discord.StageChannel)):
+                continue
+
+            try:
+                player = await voice_channel.connect(cls=wavelink.Player)
+                player.autoplay = wavelink.AutoPlayMode.enabled
+                player.ctx = RestoredMusicContext(self.client, guild, voice_channel, guild.me)
+                player.ctx.voice_client = player
+                print(f"{Fore.GREEN}{Style.BRIGHT}[MUSIC 24/7] Reconnected in {guild.name} ({voice_channel.name}).")
+            except Exception as error:
+                print(f"{Fore.RED}[MUSIC 24/7] Could not reconnect in {guild.name}: {error}")
+
+    async def reconnect_247(self, guild_id: int):
+        await asyncio.sleep(3)
+        if self.is_247_enabled(guild_id):
+            await self.restore_247_connections()
 
     async def monitor_inactivity(self):
         while True:
@@ -1132,44 +1204,62 @@ class Music(commands.Cog):
     async def check_inactivity(self, guild_id):
         guild = self.client.get_guild(guild_id)
         if not guild:
+            self.cancel_inactivity_timer(guild_id)
             return
 
-        player = None
-        for vc in self.client.voice_clients:
-            if vc.guild.id == guild.id:
-                player = vc
-                break
+        player = guild.voice_client
+        if (
+            not player
+            or self.is_247_enabled(guild_id)
+            or not player.playing
+            or not player.channel
+            or len(player.channel.members) != 1
+        ):
+            self.cancel_inactivity_timer(guild_id)
+            return
 
-        if player and player.playing and len(player.channel.members) == 1:
-            await self.inactivity_timer(guild)
+        task = self._inactivity_tasks.get(guild_id)
+        if task is None or task.done():
+            self._inactivity_tasks[guild_id] = asyncio.create_task(self.inactivity_timer(player))
 
-    async def inactivity_timer(self, guild):
-        await asyncio.sleep(self.inactivity_timeout)
-        if len(guild.voice_channels[0].members) == 1:
-            player = None
-            for vc in self.client.voice_clients:
-                if vc.guild.id == guild.id:
-                    player = vc
-                    break
-            if player:
-                await player.disconnect(force=True)
-                try:
-                    support = Button(label='Support', style=discord.ButtonStyle.link, url=serverLink)
-                    vote = Button(label='Vote', style=discord.ButtonStyle.link, url='https://top.gg/bot//vote')
-                    view = LayoutView(timeout=None)
-                    container = build_container(
-                        TextDisplay("**Inactive Timeout**"),
-                        Separator(visible=True),
-                        TextDisplay("Bot has been disconnected due to inactivity (being idle in Voice Channel) for more than 2 minutes."),
-                        Separator(visible=True),
-                        ActionRow(support, vote),
-                        Separator(visible=True),
-                        TextDisplay(f"*Thanks for choosing {BRAND_NAME}!*"),
-                    )
-                    view.add_item(container)
-                    await player.ctx.channel.send(view=view)
-                except:
-                    pass
+    async def inactivity_timer(self, player):
+        guild_id = player.guild.id
+        try:
+            await asyncio.sleep(self.inactivity_timeout)
+            if (
+                self.is_247_enabled(guild_id)
+                or player.guild.voice_client is not player
+                or not player.playing
+                or not player.channel
+                or len(player.channel.members) != 1
+            ):
+                return
+
+            await player.disconnect(force=True)
+            self.remove_session(guild_id)
+            support = Button(label='Support', style=discord.ButtonStyle.link, url=serverLink)
+            vote = Button(label='Vote', style=discord.ButtonStyle.link, url='https://top.gg/bot//vote')
+            view = LayoutView(timeout=None)
+            container = build_container(
+                TextDisplay("**Inactive Timeout**"),
+                Separator(visible=True),
+                TextDisplay("Bot has been disconnected after being alone in the voice channel for more than 2 minutes."),
+                Separator(visible=True),
+                ActionRow(support, vote),
+                Separator(visible=True),
+                TextDisplay(f"*Thanks for choosing {BRAND_NAME}!*"),
+            )
+            view.add_item(container)
+            if getattr(player, "ctx", None):
+                await player.ctx.channel.send(view=view)
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            print(f"[Music] Inactivity disconnect failed in guild {guild_id}: {error}")
+        finally:
+            task = self._inactivity_tasks.get(guild_id)
+            if task is asyncio.current_task():
+                self._inactivity_tasks.pop(guild_id, None)
 
     async def refresh_ai_suggestions(self, guild_id: int, track):
         """Fetch smart algorithmic recommendations for current track."""
@@ -1259,6 +1349,8 @@ class Music(commands.Cog):
                     await self.display_player_embed(player, player.current, player.ctx, autoplay=True)
                 else:
                     await player.ctx.send(view=CV2("No suitable track found for autoplay."))
+            elif self.is_247_enabled(player.guild.id):
+                await player.ctx.send(view=CV2("Queue ended. 24/7 mode is keeping me in the voice channel."))
             else:
                 await player.disconnect()
                 support = Button(label='Support', style=discord.ButtonStyle.link, url=serverLink)
@@ -1644,8 +1736,12 @@ class Music(commands.Cog):
             self.remove_session(ctx.guild.id)
             await vc.channel.edit(status=None)
             vc.queue.clear()
-            await vc.disconnect(force=True)
-            await ctx.send(view=CV2(f"Stopped and queue cleared by {ctx.author.mention}."))
+            if self.is_247_enabled(ctx.guild.id):
+                await vc.stop()
+                await ctx.send(view=CV2(f"Stopped and cleared the queue. 24/7 mode keeps me connected by request from {ctx.author.mention}."))
+            else:
+                await vc.disconnect(force=True)
+                await ctx.send(view=CV2(f"Stopped and queue cleared by {ctx.author.mention}."))
         else:
             await ctx.send(view=CV2("Nothing is playing to stop."))
 
@@ -1755,6 +1851,70 @@ class Music(commands.Cog):
         else:
             await ctx.send(view=CV2("You need to join a voice channel first."))
 
+    @commands.command(
+        name="247",
+        aliases=["24/7", "24-7", "alwayson"],
+        usage="247 [on|off]",
+        help="Keeps the bot connected to your voice channel while idle.",
+    )
+    @blacklist_check()
+    @ignore_check()
+    @commands.cooldown(1, 3, commands.BucketType.user)
+    async def mode_247(self, ctx: commands.Context, state: Optional[str] = None):
+        state = state.lower() if state else "toggle"
+        if state in {"on", "enable", "enabled", "true", "1"}:
+            enable = True
+        elif state in {"off", "disable", "disabled", "false", "0"}:
+            enable = False
+        elif state == "toggle":
+            enable = not self.is_247_enabled(ctx.guild.id)
+        else:
+            await ctx.send(view=CV2("Use `247 on`, `247 off`, or `247` to toggle the mode."))
+            return
+
+        player = ctx.voice_client
+        if enable:
+            if not ctx.author.voice:
+                await ctx.send(view=CV2("Join a voice channel before enabling 24/7 mode."))
+                return
+
+            voice_channel = ctx.author.voice.channel
+            if player and player.channel != voice_channel:
+                await ctx.send(view=CV2(f"Join {player.channel.mention} to change this server's 24/7 setting."))
+                return
+
+            if player is None:
+                try:
+                    player = await voice_channel.connect(cls=wavelink.Player)
+                    player.autoplay = wavelink.AutoPlayMode.enabled
+                except Exception as error:
+                    print(f"[Music 24/7] Could not join {voice_channel.id}: {error}")
+                    await ctx.send(view=CV2("I couldn't join your voice channel. Check my voice permissions and Lavalink connection."))
+                    return
+
+            player.ctx = ctx
+            self.enable_247_mode(ctx.guild.id, voice_channel.id)
+            self.cancel_inactivity_timer(ctx.guild.id)
+            await ctx.send(view=CV2("24/7 mode enabled. I'll stay connected to this voice channel while idle."))
+            return
+
+        if not self.is_247_enabled(ctx.guild.id):
+            await ctx.send(view=CV2("24/7 mode is already disabled."))
+            return
+
+        if player and (not ctx.author.voice or ctx.author.voice.channel != player.channel):
+            await ctx.send(view=CV2(f"Join {player.channel.mention} to change this server's 24/7 setting."))
+            return
+
+        self.disable_247_mode(ctx.guild.id)
+        if player and not player.playing:
+            self.cancel_inactivity_timer(ctx.guild.id)
+            self.remove_session(ctx.guild.id)
+            await player.disconnect(force=True)
+            await ctx.send(view=CV2("24/7 mode disabled. I left the idle voice channel."))
+        else:
+            await ctx.send(view=CV2("24/7 mode disabled. Normal idle disconnect behavior is restored."))
+
     @commands.hybrid_command(name="disconnect", aliases=["dc", "leave"], usage="disconnect", help="Disconnects the bot from the voice channel.")
     @blacklist_check()
     @ignore_check()
@@ -1770,9 +1930,15 @@ class Music(commands.Cog):
             return
 
         if vc:
+            mode_was_enabled = self.is_247_enabled(ctx.guild.id)
+            if mode_was_enabled:
+                self.disable_247_mode(ctx.guild.id)
             self.remove_session(ctx.guild.id)
             await vc.disconnect()
-            await ctx.send(view=CV2("Disconnected from the voice channel."))
+            message = "Disconnected from the voice channel."
+            if mode_was_enabled:
+                message += " 24/7 mode has been disabled."
+            await ctx.send(view=CV2(message))
         else:
             await ctx.send(view=CV2("Bot is not connected to any voice channel."))
 
@@ -1808,8 +1974,17 @@ class Music(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        if member.id == self.client.user.id and before.channel and not after.channel:
-            self.remove_session(member.guild.id)
+        if not self.client.user or member.id != self.client.user.id:
+            return
+
+        guild_id = member.guild.id
+        if before.channel and not after.channel:
+            if self.is_247_enabled(guild_id):
+                asyncio.create_task(self.reconnect_247(guild_id))
+            else:
+                self.remove_session(guild_id)
+        elif after.channel and before.channel != after.channel and self.is_247_enabled(guild_id):
+            self.enable_247_mode(guild_id, after.channel.id)
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
