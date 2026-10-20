@@ -33,6 +33,44 @@ track_histories = {}
 import base64
 import re
 from utils.config import *
+import json
+import atexit
+from colorama import Fore, Style
+from typing import cast, Optional, Union, List, Dict, Any
+
+DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "db"))
+SESSIONS_FILE = os.path.join(DB_DIR, "music_active_sessions.json")
+
+_music_cog_instance = None
+
+def sync_save_music_sessions():
+    global _music_cog_instance
+    if _music_cog_instance:
+        try:
+            _music_cog_instance.save_all_sessions_sync()
+        except Exception:
+            pass
+
+atexit.register(sync_save_music_sessions)
+
+class RestoredMusicContext:
+    """Lightweight context for restored players after bot/server restarts."""
+    def __init__(self, bot, guild: discord.Guild, channel: Union[discord.TextChannel, discord.VoiceChannel, discord.StageChannel, discord.Thread], author: Optional[discord.Member] = None):
+        self.bot = bot
+        self.guild = guild
+        self.channel = channel
+        self.author = author or guild.me
+        self.voice_client = getattr(guild, "voice_client", None)
+        self.message = None
+
+    async def send(self, *args, **kwargs):
+        if self.channel and hasattr(self.channel, "send"):
+            try:
+                return await self.channel.send(*args, **kwargs)
+            except Exception:
+                pass
+        return None
+
 
 SPOTIFY_TRACK_REGEX = r"https?://open\.spotify\.com/track/([a-zA-Z0-9]+)"
 SPOTIFY_PLAYLIST_REGEX = r"https?://open\.spotify\.com/playlist/([a-zA-Z0-9]+)"
@@ -311,8 +349,17 @@ class MusicControlView(LayoutView):
         if self.player:
             voice_channel = self.player.channel
             if voice_channel:
-                await voice_channel.edit(status=None)
+                try:
+                    await voice_channel.edit(status=None)
+                except Exception:
+                    pass
+            guild_id = self.player.guild.id
+            if hasattr(self.player, "queue"):
+                self.player.queue.clear()
             await self.player.disconnect()
+            music_cog = self.player.client.get_cog("Music") if hasattr(self.player, "client") else None
+            if music_cog and hasattr(music_cog, "remove_session"):
+                music_cog.remove_session(guild_id)
             await interaction.response.send_message(f"Stopped and disconnected by **{interaction.user.display_name}**.")
         else:
             await interaction.response.send_message("Not connected.", ephemeral=True)
@@ -335,12 +382,331 @@ class MusicControlView(LayoutView):
 
 class Music(commands.Cog):
     def __init__(self, client: zyuna):
+        global _music_cog_instance
         self.client = client
-        self.client.loop.create_task(self.connect_nodes())
-        self.client.loop.create_task(self.monitor_inactivity())
+        _music_cog_instance = self
         
         self.inactivity_timeout = 120 
-        self.player_inactivity = {}  
+        self.player_inactivity = {}
+        self._restoring = False
+        self._restored = False
+        self._recovery_lock = asyncio.Lock()
+        
+        self.periodic_save_sessions.start()
+        
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.connect_nodes())
+            loop.create_task(self.monitor_inactivity())
+        except RuntimeError:
+            pass
+
+    async def cog_unload(self):
+        self.save_all_sessions_sync()
+        if hasattr(self, "periodic_save_sessions"):
+            self.periodic_save_sessions.cancel()
+
+    def serialize_player(self, player: wavelink.Player) -> dict | None:
+        if not player or not player.channel or not player.current:
+            return None
+
+        current_track = player.current
+        raw_data = getattr(current_track, "raw_data", None)
+        current_dict = {
+            "title": current_track.title,
+            "author": current_track.author,
+            "uri": current_track.uri,
+            "length": current_track.length,
+            "position": max(0, player.position),
+            "is_stream": getattr(current_track, "is_stream", False),
+            "raw_data": raw_data,
+        }
+
+        queue_list = []
+        for t in player.queue:
+            queue_list.append({
+                "title": t.title,
+                "author": t.author,
+                "uri": t.uri,
+                "length": t.length,
+                "is_stream": getattr(t, "is_stream", False),
+                "raw_data": getattr(t, "raw_data", None)
+            })
+
+        text_channel_id = None
+        requester_id = None
+        if hasattr(player, "ctx") and player.ctx:
+            if hasattr(player.ctx, "channel") and player.ctx.channel:
+                text_channel_id = player.ctx.channel.id
+            if hasattr(player.ctx, "author") and player.ctx.author:
+                requester_id = player.ctx.author.id
+
+        loop_mode = "normal"
+        if hasattr(player.queue, "mode"):
+            if player.queue.mode == wavelink.QueueMode.loop:
+                loop_mode = "loop"
+            elif player.queue.mode == wavelink.QueueMode.loop_all:
+                loop_mode = "loop_all"
+
+        autoplay = player.autoplay == wavelink.AutoPlayMode.enabled
+        
+        active_filter = None
+        filter_cog = self.client.get_cog("FilterCog")
+        if filter_cog and hasattr(filter_cog, "active_filters"):
+            active_filter = filter_cog.active_filters.get(player.guild.id)
+
+        return {
+            "guild_id": player.guild.id,
+            "voice_channel_id": player.channel.id,
+            "text_channel_id": text_channel_id,
+            "requester_id": requester_id,
+            "current_track": current_dict,
+            "queue": queue_list,
+            "volume": player.volume,
+            "loop_mode": loop_mode,
+            "autoplay": autoplay,
+            "paused": player.paused,
+            "filter": active_filter,
+            "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+
+    def load_sessions(self) -> dict:
+        if not os.path.exists(SESSIONS_FILE):
+            return {}
+        try:
+            with open(SESSIONS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def save_sessions(self, sessions: dict):
+        try:
+            os.makedirs(DB_DIR, exist_ok=True)
+            temp_file = SESSIONS_FILE + ".tmp"
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(sessions, f, indent=2)
+            os.replace(temp_file, SESSIONS_FILE)
+        except Exception:
+            pass
+
+    def save_all_sessions_sync(self):
+        sessions = {}
+        for vc in self.client.voice_clients:
+            if isinstance(vc, wavelink.Player) and (vc.playing or vc.paused) and vc.current:
+                data = self.serialize_player(vc)
+                if data:
+                    sessions[str(vc.guild.id)] = data
+        self.save_sessions(sessions)
+
+    def remove_session(self, guild_id: int):
+        sessions = self.load_sessions()
+        key = str(guild_id)
+        if key in sessions:
+            sessions.pop(key, None)
+            self.save_sessions(sessions)
+
+    def update_session(self, player: wavelink.Player):
+        if not player or not player.guild:
+            return
+        sessions = self.load_sessions()
+        if (player.playing or player.paused) and player.current:
+            data = self.serialize_player(player)
+            if data:
+                sessions[str(player.guild.id)] = data
+                self.save_sessions(sessions)
+        else:
+            self.remove_session(player.guild.id)
+
+    @tasks.loop(seconds=3)
+    async def periodic_save_sessions(self):
+        try:
+            sessions = self.load_sessions()
+            current_guild_ids = set()
+
+            for vc in self.client.voice_clients:
+                if isinstance(vc, wavelink.Player) and (vc.playing or vc.paused) and vc.current:
+                    data = self.serialize_player(vc)
+                    if data:
+                        sessions[str(vc.guild.id)] = data
+                        current_guild_ids.add(str(vc.guild.id))
+
+            for g_id in list(sessions.keys()):
+                guild = self.client.get_guild(int(g_id))
+                if not guild:
+                    sessions.pop(g_id, None)
+                elif g_id not in current_guild_ids and guild.voice_client is None:
+                    sessions.pop(g_id, None)
+
+            self.save_sessions(sessions)
+        except Exception:
+            pass
+
+    async def reconstruct_track(self, track_data: dict) -> wavelink.Playable | None:
+        if not track_data or not isinstance(track_data, dict):
+            return None
+
+        raw = track_data.get("raw_data")
+        if raw and isinstance(raw, dict):
+            try:
+                return wavelink.Playable(raw)
+            except Exception:
+                pass
+
+        query = track_data.get("uri") or f"{track_data.get('title', '')} {track_data.get('author', '')}".strip()
+        if query:
+            try:
+                results = await wavelink.Playable.search(query)
+                if results:
+                    return results[0] if not isinstance(results, wavelink.Playlist) else results.tracks[0]
+            except Exception:
+                pass
+
+        return None
+
+    async def restore_music_sessions(self):
+        async with self._recovery_lock:
+            if self._restored:
+                return
+            self._restored = True
+            self._restoring = True
+
+        try:
+            await self.client.wait_until_ready()
+
+            connected_node = None
+            for _ in range(45):
+                try:
+                    node = wavelink.Pool.get_node()
+                    if node and node.status == wavelink.NodeStatus.CONNECTED:
+                        connected_node = node
+                        break
+                except Exception:
+                    pass
+                await asyncio.sleep(1)
+
+            if not connected_node:
+                self._restored = False
+                return
+
+            sessions = self.load_sessions()
+            if not sessions:
+                return
+
+            print(f"{Fore.CYAN}{Style.BRIGHT}[MUSIC RECOVERY] Found {len(sessions)} active session(s) to restore after restart.")
+
+            for guild_id_str, data in list(sessions.items()):
+                try:
+                    guild_id = int(guild_id_str)
+                    guild = self.client.get_guild(guild_id)
+                    if not guild:
+                        continue
+
+                    voice_channel_id = data.get("voice_channel_id")
+                    voice_channel = guild.get_channel(voice_channel_id)
+                    if not voice_channel or not isinstance(voice_channel, (discord.VoiceChannel, discord.StageChannel)):
+                        self.remove_session(guild_id)
+                        continue
+
+                    vc: wavelink.Player = guild.voice_client
+                    if not vc:
+                        try:
+                            vc = await voice_channel.connect(cls=wavelink.Player)
+                        except Exception as e:
+                            print(f"{Fore.RED}[MUSIC RECOVERY ERROR] Failed to connect to {voice_channel.name} in {guild.name}: {e}")
+                            continue
+
+                    text_channel_id = data.get("text_channel_id")
+                    text_channel = guild.get_channel(text_channel_id) if text_channel_id else None
+                    if not text_channel or not isinstance(text_channel, (discord.TextChannel, discord.Thread)):
+                        text_channel = voice_channel
+
+                    requester_id = data.get("requester_id")
+                    requester = guild.get_member(requester_id) if requester_id else None
+
+                    vc.ctx = RestoredMusicContext(self.client, guild, text_channel, requester)
+                    vc.ctx.voice_client = vc
+
+                    volume = data.get("volume", 100)
+                    try:
+                        await vc.set_volume(volume)
+                    except Exception:
+                        pass
+
+                    loop_mode = data.get("loop_mode", "normal")
+                    if loop_mode == "loop":
+                        vc.queue.mode = wavelink.QueueMode.loop
+                    elif loop_mode == "loop_all":
+                        vc.queue.mode = wavelink.QueueMode.loop_all
+                    else:
+                        vc.queue.mode = wavelink.QueueMode.normal
+
+                    if data.get("autoplay"):
+                        vc.autoplay = wavelink.AutoPlayMode.enabled
+                    else:
+                        vc.autoplay = wavelink.AutoPlayMode.disabled
+
+                    queue_items = data.get("queue", [])
+                    for q_item in queue_items:
+                        q_track = await self.reconstruct_track(q_item)
+                        if q_track:
+                            await vc.queue.put_wait(q_track)
+
+                    current_data = data.get("current_track")
+                    if current_data:
+                        current_track = await self.reconstruct_track(current_data)
+                        if current_track:
+                            start_pos = int(current_data.get("position", 0))
+                            if current_track.length and start_pos >= current_track.length:
+                                start_pos = 0
+                            elif start_pos < 0:
+                                start_pos = 0
+
+                            if getattr(current_track, "is_stream", False):
+                                start_pos = 0
+
+                            paused = data.get("paused", False)
+
+                            await vc.play(current_track, start=start_pos, volume=volume, paused=paused)
+
+                            saved_filter = data.get("filter")
+                            if saved_filter:
+                                filter_cog = self.client.get_cog("FilterCog")
+                                if filter_cog and hasattr(filter_cog, "apply_filter_to_player"):
+                                    try:
+                                        await filter_cog.apply_filter_to_player(vc, saved_filter)
+                                    except Exception:
+                                        pass
+
+                            try:
+                                await voice_channel.edit(status=f"{MUSIC_ALT1} Playing: {current_track.title}")
+                            except Exception:
+                                pass
+
+                            if text_channel and hasattr(text_channel, "send"):
+                                try:
+                                    sec = start_pos // 1000
+                                    time_str = f"{sec // 60:02d}:{sec % 60:02d}"
+                                    tot_sec = current_track.length // 1000 if current_track.length else 0
+                                    tot_str = f"{tot_sec // 60:02d}:{tot_sec % 60:02d}"
+                                    queue_len = len(queue_items)
+
+                                    resume_view = CV2(
+                                        f"🎵 Playback Resumed (Server Restart)",
+                                        f"Playback of **[{current_track.title}]({current_track.uri or serverLink})** has uninterruptedly resumed at `{time_str} / {tot_str}`.",
+                                        f"• **Queue Preserved:** `{queue_len}` song{'s' if queue_len != 1 else ''}\n"
+                                        f"• **Volume:** `{volume}%` | **Channel:** {voice_channel.mention}"
+                                    )
+                                    await text_channel.send(view=resume_view)
+                                except Exception:
+                                    pass
+
+                            print(f"{Fore.GREEN}{Style.BRIGHT}[MUSIC RECOVERY SUCCESS] Resumed '{current_track.title}' in {guild.name} ({voice_channel.name}) at {start_pos}ms.")
+
+                except Exception as e:
+                    print(f"{Fore.RED}[MUSIC RECOVERY ERROR] Failed to restore session for guild {guild_id_str}: {e}")
+
+        finally:
+            self._restoring = False  
 
     async def monitor_inactivity(self):
         while True:
@@ -403,6 +769,7 @@ class Music(commands.Cog):
 
         nodes = [wavelink.Node(uri=uri, password=password)]
         await wavelink.Pool.connect(nodes=nodes, client=self.client, cache_capacity=None)
+        asyncio.create_task(self.restore_music_sessions())
 
 
     async def display_player_embed(self, player, track, ctx, autoplay=False):
@@ -803,6 +1170,7 @@ class Music(commands.Cog):
             return
 
         if vc and player:
+            self.remove_session(ctx.guild.id)
             await vc.channel.edit(status=None)
             vc.queue.clear()
             await vc.disconnect(force=True)
@@ -928,6 +1296,7 @@ class Music(commands.Cog):
             return
 
         if vc:
+            self.remove_session(ctx.guild.id)
             await vc.disconnect()
             await ctx.send(view=CV2("Disconnected from the voice channel."))
         else:
@@ -958,6 +1327,17 @@ class Music(commands.Cog):
         await ctx.send(view=CV2(f"Seeked to {percentage}% of the current track."))
 
     @commands.Cog.listener()
+    async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload):
+        print(f"{Fore.GREEN}[WAVELINK] Node {payload.node.identifier} is ready (resumed: {payload.resumed}).")
+        if not self._restored:
+            asyncio.create_task(self.restore_music_sessions())
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        if member.id == self.client.user.id and before.channel and not after.channel:
+            self.remove_session(member.guild.id)
+
+    @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
         player = payload.player
         track = player.current
@@ -977,11 +1357,22 @@ class Music(commands.Cog):
             if len(track_histories[guild_id]) > 10:
                 track_histories[guild_id].pop(0)
 
+        self.update_session(player)
+
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
         player = payload.player
         voice_channel = player.channel
 
         if voice_channel:
-            await voice_channel.edit(status=None)  # type: ignore
+            try:
+                await voice_channel.edit(status=None)
+            except Exception:
+                pass
+
+        if not player.queue and player.queue.mode != wavelink.QueueMode.loop and player.autoplay != wavelink.AutoPlayMode.enabled:
+            self.remove_session(player.guild.id)
+        else:
+            self.update_session(player)
+
         await self.on_track_end(payload)

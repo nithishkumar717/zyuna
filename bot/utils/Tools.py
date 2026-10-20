@@ -123,6 +123,15 @@ async def updateConfig(guildID, data):
 
 
 def restart_program():
+  try:
+    from cogs.commands.music import sync_save_music_sessions
+    sync_save_music_sessions()
+  except Exception:
+    try:
+      from bot.cogs.commands.music import sync_save_music_sessions
+      sync_save_music_sessions()
+    except Exception:
+      pass
   python = sys.executable
   os.execl(python, python, *sys.argv)
 

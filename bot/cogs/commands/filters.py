@@ -22,16 +22,7 @@ class FilterCog(commands.Cog):
         self.bot = bot
         self.active_filters = {}
 
-    async def apply_filter(self, ctx: commands.Context, filter_name: str):
-        player: Union[wavelink.Player, None] = ctx.voice_client
-        if not player or not player.playing:
-            await ctx.send("I'm not playing anything.")
-            return
-
-        if ctx.author.voice is None or ctx.author.voice.channel != player.channel:
-            await ctx.send("You need to be in the same voice channel as me.")
-            return
-
+    def build_filters(self, filter_name: str) -> Union[wavelink.Filters, None]:
         filters = wavelink.Filters()
 
         if filter_name == "nightcore":
@@ -61,10 +52,35 @@ class FilterCog(commands.Cog):
             )
         elif filter_name == "channelmix":
             filters.channel_mix.set(left_to_left=0.5, left_to_right=0.5, right_to_left=0.5, right_to_right=0.5)
+        else:
+            return None
+        return filters
 
-        await player.set_filters(filters)
-        self.active_filters[ctx.guild.id] = filter_name
-        await ctx.send(embed=discord.Embed(description=f"Filter set to **{filter_name}**.", color=discord.Color.green()))
+    async def apply_filter_to_player(self, player: wavelink.Player, filter_name: str) -> bool:
+        if not player:
+            return False
+        filters = self.build_filters(filter_name)
+        if filters:
+            await player.set_filters(filters)
+            self.active_filters[player.guild.id] = filter_name
+            return True
+        return False
+
+    async def apply_filter(self, ctx: commands.Context, filter_name: str):
+        player: Union[wavelink.Player, None] = ctx.voice_client
+        if not player or not player.playing:
+            await ctx.send("I'm not playing anything.")
+            return
+
+        if ctx.author.voice is None or ctx.author.voice.channel != player.channel:
+            await ctx.send("You need to be in the same voice channel as me.")
+            return
+
+        success = await self.apply_filter_to_player(player, filter_name)
+        if success:
+            await ctx.send(embed=discord.Embed(description=f"Filter set to **{filter_name}**.", color=discord.Color.green()))
+        else:
+            await ctx.send("Unknown filter.")
 
     @commands.hybrid_group(invoke_without_command=True)
     @blacklist_check()
@@ -88,7 +104,6 @@ class FilterCog(commands.Cog):
             return
 
         filter_options = [
-
             discord.SelectOption(label="Vaporwave", description="Apply vaporwave effect"),
             discord.SelectOption(label="Nightcore", description="Apply nightcore effect"),
             discord.SelectOption(label="Vibrato", description="Apply vibrato effect"),
@@ -106,13 +121,13 @@ class FilterCog(commands.Cog):
                 await interaction.response.defer()
                 selected_filter = select.values[0].lower()
                 await self.cog.apply_filter(ctx, selected_filter)
-                #await interaction.message.delete()  
                 self.disable_all()  
 
             @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
             async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
                 await interaction.message.delete()  
                 self.disable_all()  
+
             def disable_all(self):
                 for child in self.children:
                     child.disabled = True
@@ -144,4 +159,3 @@ class FilterCog(commands.Cog):
         await player.set_filters(filters)
         self.active_filters.pop(ctx.guild.id, None)
         await ctx.send(embed=discord.Embed(description="Filter disabled.", color=discord.Color.red()))
-

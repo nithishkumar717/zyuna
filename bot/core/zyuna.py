@@ -59,6 +59,15 @@ class zyuna(commands.AutoShardedBot):
         self.status_index = 0
         self.status_list = []
 
+    async def close(self):
+        music_cog = self.get_cog("Music")
+        if music_cog and hasattr(music_cog, "save_all_sessions_sync"):
+            try:
+                music_cog.save_all_sessions_sync()
+            except Exception:
+                pass
+        await super().close()
+
     async def setup_hook(self):
         await self.load_extensions()
         self.status_task.start()
