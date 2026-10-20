@@ -23,6 +23,8 @@ except (ImportError, ModuleNotFoundError):
 import aiosqlite
 import asyncio
 
+DEFAULT_PREFIX = "."
+
 # Ensure local database directory exists
 try:
     os.makedirs("db", exist_ok=True)
@@ -40,6 +42,9 @@ async def setup_db():
         prefix TEXT NOT NULL
       )
     ''')
+    # Existing rows were created with the old global default. Prefixes could
+    # not previously be changed through a guild command, so migrate those rows.
+    await db.execute("UPDATE prefixes SET prefix = ? WHERE prefix = ?", (DEFAULT_PREFIX, ">"))
     await db.commit()
 
   # The ignore checks run for both message events and command invocation.
@@ -140,7 +145,7 @@ async def getConfig(guildID):
       if row:
         return {"prefix": row[0]}
       else:
-        defaultConfig = {"prefix": ">"}
+        defaultConfig = {"prefix": DEFAULT_PREFIX}
         await updateConfig(guildID, defaultConfig)
         return defaultConfig
 

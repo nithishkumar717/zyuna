@@ -67,7 +67,7 @@ class HelpCommand(commands.HelpCommand):
         cmds = [str(cmd) for cmd in self.context.bot.walk_commands()]
         matches = get_close_matches(string, cmds, n=3, cutoff=0.55)
 
-        prefix = ctx.prefix or ">"
+        prefix = ctx.prefix or "."
         desc = f"> Ops! Could not find any command matching `{string}`."
         if matches:
             suggestions = " • ".join(f"`{prefix}{m}`" for m in matches)
@@ -96,9 +96,9 @@ class HelpCommand(commands.HelpCommand):
         # Keep the overview compact and respect users with a prefixless command mode.
         try:
             data = await getConfig(self.context.guild.id)
-            configured_prefix = data.get("prefix", ">")
+            configured_prefix = data.get("prefix", ".")
         except Exception:
-            configured_prefix = ">"
+            configured_prefix = "."
 
         prefix = self.context.prefix if self.context.prefix is not None else configured_prefix
         prefix = prefix or ""

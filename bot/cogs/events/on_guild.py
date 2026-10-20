@@ -98,9 +98,9 @@ Threads : {len(guild.threads)}
             try:
                 from utils.Tools import getConfig
                 prefix_data = await getConfig(guild.id)
-                prefix = prefix_data.get("prefix", "$")
+                prefix = prefix_data.get("prefix", ".")
             except Exception:
-                prefix = "$"
+                prefix = "."
 
             brand = BRAND_NAME if BRAND_NAME else "Yuna"
             avatar_url = self.client.user.display_avatar.url if self.client.user else guild.me.display_avatar.url

@@ -25,7 +25,7 @@ class _utility(commands.Cog):
     def help_custom(self):
         emoji = INFO
         label = "Utilities & Tools"
-        description = "Visual embed builder, translator, webhooks & maps"
+        description = "Server prefix, visual embed builder, translation, webhooks & maps"
         return emoji, label, description
 
     @commands.group()
@@ -34,5 +34,5 @@ class _utility(commands.Cog):
 __**Builder & Translation**__
 embed, hinglish, map, search_youtube
 __**Server Tools & Webhooks**__
-create_hook, delete_hook, list_hooks
+prefix, create_hook, delete_hook, list_hooks
 """

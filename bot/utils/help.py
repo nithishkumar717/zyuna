@@ -39,7 +39,7 @@ CORE_LABELS = {
 }
 
 
-def clean_command_block(raw_text: str, prefix: str = ">") -> str:
+def clean_command_block(raw_text: str, prefix: str = ".") -> str:
     """Format raw comma-separated command dumps into clean modern pill sections."""
     lines = raw_text.strip().split("\n")
     formatted_sections = []
@@ -124,7 +124,7 @@ class View(LayoutView):
         self.current_page = 0
         self.ui = ui
         context_prefix = getattr(ctx, "prefix", None)
-        self.prefix = ">" if context_prefix is None else context_prefix
+        self.prefix = "." if context_prefix is None else context_prefix
 
         self.label_to_page: Dict[str, int] = {}
         self.core_options: List[discord.SelectOption] = []

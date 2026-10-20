@@ -131,9 +131,9 @@ class zyuna(commands.AutoShardedBot):
         guild = self.guilds[0]  # Use first available guild for prefix
         try:
             config = await getConfig(guild.id)
-            prefix = config.get("prefix", ">")
+            prefix = config.get("prefix", ".")
         except:
-            prefix = ">"
+            prefix = "."
 
         user_count = sum(g.member_count or 0 for g in self.guilds)
         guild_count = len(self.guilds)

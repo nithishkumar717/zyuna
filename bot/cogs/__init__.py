@@ -28,6 +28,7 @@ from .commands.translate import TranslateCog
 from .commands.stats import Stats
 from .commands.notify import NotifCommands
 from .commands.status import Status
+from .commands.prefix import Prefix
 from .commands.np import NoPrefix
 from .commands.filters import FilterCog
 from .commands.owner2 import Global
@@ -59,7 +60,7 @@ except (ImportError, ModuleNotFoundError):
 async def setup(bot: zyuna):
     cogs_to_load = [
         Help, Music, Owner, Embed, Blacklist, Block, Badges,
-        Guild, Errors, Mention, Stats, Status, NoPrefix, FilterCog,
+        Guild, Errors, Mention, Stats, Status, Prefix, NoPrefix, FilterCog,
         Global, Messages, TranslateCog, StaffDMCog, Youtube, Map, Messagespack,
         NotifCommands, _music, _filters, _utility, _alerts, _safety, _games, _system
     ]
@@ -73,6 +74,7 @@ async def setup(bot: zyuna):
     await bot.add_cog(Badges(bot))
     await bot.add_cog(Stats(bot))
     await bot.add_cog(Status(bot))
+    await bot.add_cog(Prefix(bot))
     await bot.add_cog(NoPrefix(bot))
     await bot.add_cog(FilterCog(bot))
     await bot.add_cog(Global(bot))
