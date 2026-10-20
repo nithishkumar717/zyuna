@@ -38,6 +38,7 @@ from utils.cv2 import CV2, build_container, CV2Embed
 track_histories = {}
 import base64
 import re
+from urllib.parse import urlsplit
 from utils.config import *
 import json
 import atexit
@@ -81,6 +82,30 @@ class RestoredMusicContext:
 SPOTIFY_TRACK_REGEX = r"https?://open\.spotify\.com/track/([a-zA-Z0-9]+)"
 SPOTIFY_PLAYLIST_REGEX = r"https?://open\.spotify\.com/playlist/([a-zA-Z0-9]+)"
 SPOTIFY_ALBUM_REGEX = r"https?://open\.spotify\.com/album/([a-zA-Z0-9]+)"
+MUSIC_URL_PATTERN = re.compile(r"https?://[^\s<>]+", re.IGNORECASE)
+MUSIC_URL_HOSTS = {
+    "spotify.com",
+    "spotify.link",
+    "youtube.com",
+    "youtu.be",
+    "soundcloud.com",
+    "on.soundcloud.com",
+    "music.apple.com",
+    "jiosaavn.com",
+    "saavn.com",
+}
+
+
+def is_supported_music_url(url: str) -> bool:
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+
+    if parsed.scheme.lower() not in {"http", "https"}:
+        return False
+    return any(host == domain or host.endswith(f".{domain}") for domain in MUSIC_URL_HOSTS)
 
 class SpotifyAPI:
     BASE_URL = "https://api.spotify.com/v1"
@@ -661,6 +686,70 @@ class MusicControlView(LayoutView):
         await interaction.response.send_message(view=view, ephemeral=True)
 
 
+class MusicURLConfirmationView(LayoutView):
+    def __init__(self, cog, ctx, url):
+        super().__init__(timeout=15)
+        self.cog = cog
+        self.ctx = ctx
+        self.url = url
+        self.author_id = ctx.author.id
+        self.message = None
+
+        self.status_display = TextDisplay("**Want to play this audio?**")
+        self.yes_button = Button(label="Yes", style=discord.ButtonStyle.success)
+        self.no_button = Button(label="No", style=discord.ButtonStyle.secondary)
+        self.yes_button.callback = self._yes
+        self.no_button.callback = self._no
+
+        container = build_container(
+            self.status_display,
+            Separator(visible=True),
+            TextDisplay(url),
+            Separator(visible=True),
+            ActionRow(self.yes_button, self.no_button),
+        )
+        self.add_item(container)
+
+    async def _check_owner(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                "Only the person who posted this link can choose.", ephemeral=True
+            )
+            return False
+        return True
+
+    async def _yes(self, interaction: discord.Interaction):
+        if not await self._check_owner(interaction):
+            return
+
+        self.yes_button.disabled = True
+        self.no_button.disabled = True
+        self.status_display.content = "**Starting playback...**"
+        await interaction.response.edit_message(view=self)
+        self.stop()
+        await self.cog.play_confirmed_url(self.ctx, self.url)
+
+    async def _no(self, interaction: discord.Interaction):
+        if not await self._check_owner(interaction):
+            return
+
+        self.yes_button.disabled = True
+        self.no_button.disabled = True
+        self.status_display.content = "**Playback cancelled.**"
+        await interaction.response.edit_message(view=self)
+        self.stop()
+
+    async def on_timeout(self):
+        self.yes_button.disabled = True
+        self.no_button.disabled = True
+        self.status_display.content = "**Confirmation expired.**"
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except Exception:
+                pass
+
+
 class Music(commands.Cog):
     def __init__(self, client: zyuna):
         global _music_cog_instance
@@ -687,6 +776,50 @@ class Music(commands.Cog):
         self.save_all_sessions_sync()
         if hasattr(self, "periodic_save_sessions"):
             self.periodic_save_sessions.cancel()
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or message.guild is None:
+            return
+
+        # Let recognized commands and non-empty configured prefixes follow their
+        # usual path. Some users have an empty prefix, so ctx.prefix can be ""
+        # even for an ordinary message.
+        ctx = await self.client.get_context(message)
+        if ctx.valid or (ctx.prefix and message.content.startswith(ctx.prefix)):
+            return
+
+        urls = []
+        for match in MUSIC_URL_PATTERN.finditer(message.content):
+            url = match.group(0).rstrip(".,!?;:)]}")
+            if is_supported_music_url(url):
+                urls.append(url)
+
+        # A single link is unambiguous; multiple links should not trigger an
+        # unexpected playback choice.
+        if len(urls) != 1:
+            return
+
+        view = MusicURLConfirmationView(self, ctx, urls[0])
+        try:
+            view.message = await message.channel.send(view=view)
+        except discord.HTTPException:
+            return
+
+    async def play_confirmed_url(self, ctx: commands.Context, url: str):
+        original_command = ctx.command
+        ctx.command = self.play
+        try:
+            await self.play.can_run(ctx)
+            self.play._prepare_cooldowns(ctx)
+            await self.play(ctx, query=url)
+        except commands.CommandError as error:
+            await ctx.send(view=CV2(f"{WARNING} {error}"))
+        except Exception as error:
+            print(f"[Music URL Confirmation] Playback failed: {error}")
+            await ctx.send(view=CV2("I couldn't start playback for that link."))
+        finally:
+            ctx.command = original_command
 
     def serialize_player(self, player: wavelink.Player) -> dict | None:
         if not player or not player.channel or not player.current:
@@ -1163,14 +1296,15 @@ class Music(commands.Cog):
             if ctx.voice_client and ctx.voice_client.channel != ctx.author.voice.channel:
                 await ctx.send(view=CV2(f"You must be connected to {ctx.voice_client.channel.mention} to play."))
                 return
-        """if re.match(SPOTIFY_TRACK_REGEX, query):
+        if re.match(SPOTIFY_TRACK_REGEX, query):
             await self.handle_spotify_link(ctx, vc, query, "track")
+            return
         elif re.match(SPOTIFY_PLAYLIST_REGEX, query):
             await self.handle_spotify_link(ctx, vc, query, "playlist")
+            return
         elif re.match(SPOTIFY_ALBUM_REGEX, query):
             await self.handle_spotify_link(ctx, vc, query, "album")
-        
-            return"""
+            return
             
         tracks = await wavelink.Playable.search(query)
         if not tracks:
@@ -1292,7 +1426,7 @@ class Music(commands.Cog):
         bar = '█' * filled_length + '░' * (length - filled_length)
         return bar
 
-    @commands.command(name="play", aliases=['p'], usage="play <query>", help="Plays a song or playlist.")
+    @commands.command(name="play", aliases=['p', '-p'], usage="play <query>", help="Plays a song or playlist.")
     @blacklist_check()
     @ignore_check()
     @commands.cooldown(1, 3, commands.BucketType.user)
