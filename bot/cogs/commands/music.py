@@ -28,6 +28,20 @@ import wavelink
 from wavelink.enums import TrackSource
 from utils import Paginator, DescriptionEmbedPaginator
 from core import Cog, zyuna, Context
+from utils.music_intelligence import (
+    MusicSessionState,
+    AutoplayEngine,
+    SongValidator,
+    normalize_title,
+    clean_display_title,
+)
+from core.ml import (
+    SearchRankingModel,
+    RankingModel,
+    ContextualBandit,
+    InteractionLogger,
+    MusicTelemetryEvent,
+)
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import io
 import aiohttp
@@ -234,7 +248,8 @@ class SearchResultView(LayoutView):
             vc = self.ctx.voice_client
             if vc is None:
                 vc = await self.ctx.author.voice.channel.connect(cls=wavelink.Player)
-                vc.autoplay = wavelink.AutoPlayMode.enabled
+                vc.autoplay = wavelink.AutoPlayMode.disabled
+                vc.smart_autoplay = True
             vc.ctx = self.ctx
 
             if not vc.playing:
@@ -512,7 +527,7 @@ class MusicControlView(LayoutView):
     def update_button_styles(self):
         is_paused = getattr(self.player, "paused", False)
         is_loop = (getattr(self.player.queue, "mode", None) == wavelink.QueueMode.loop) if hasattr(self.player, "queue") else False
-        is_autoplay = (getattr(self.player, "autoplay", None) == wavelink.AutoPlayMode.enabled)
+        is_autoplay = getattr(self.player, "smart_autoplay", True)
 
         if hasattr(self, "btn_play_pause"):
             self.btn_play_pause.style = discord.ButtonStyle.success if is_paused else discord.ButtonStyle.secondary
@@ -580,7 +595,20 @@ class MusicControlView(LayoutView):
 
     async def _cb_skip(self, interaction: discord.Interaction):
         if not await self.interaction_check(interaction): return
-        if self.player.autoplay == wavelink.AutoPlayMode.enabled or not self.player.queue.is_empty:
+        if getattr(self.player, "smart_autoplay", True) or not self.player.queue.is_empty:
+            if self.player.current and self.cog:
+                session = self.cog.get_session(self.player.guild.id)
+                session.record_skip(self.player.current.title)
+                self.player.client.loop.create_task(self.cog.telemetry.log_event(
+                    event_type=MusicTelemetryEvent.SKIP,
+                    guild_id=self.player.guild.id,
+                    user_id=interaction.user.id,
+                    track_id=getattr(self.player.current, "identifier", ""),
+                    title=getattr(self.player.current, "title", ""),
+                    artist=getattr(self.player.current, "author", ""),
+                    track_duration=(self.player.current.length / 1000.0) if getattr(self.player.current, "length", None) else 0,
+                    played_seconds=(self.player.position / 1000.0) if getattr(self.player, "position", None) else 0,
+                ))
             await self.player.stop()
             await interaction.response.send_message(f"⏭️ Skipped by **{interaction.user.display_name}**.", ephemeral=True)
         else:
@@ -678,8 +706,11 @@ class MusicControlView(LayoutView):
 
     async def _cb_autoplay(self, interaction: discord.Interaction):
         if not await self.interaction_check(interaction): return
-        is_auto = (self.player.autoplay == wavelink.AutoPlayMode.enabled)
-        self.player.autoplay = wavelink.AutoPlayMode.disabled if is_auto else wavelink.AutoPlayMode.enabled
+        is_auto = getattr(self.player, "smart_autoplay", True)
+        self.player.smart_autoplay = not is_auto
+        self.player.autoplay = wavelink.AutoPlayMode.disabled
+
+
         self.update_button_styles()
         try:
             await interaction.message.edit(view=self)
@@ -774,12 +805,20 @@ class Music(commands.Cog):
         self._restored = False
         self._recovery_lock = asyncio.Lock()
         
+        # ML Music Intelligence & Session Subsystem
+        self.sessions: Dict[int, MusicSessionState] = {}
+        self.search_ranker = SearchRankingModel()
+        self.ranking_model = RankingModel()
+        self.bandit = ContextualBandit()
+        self.telemetry = InteractionLogger.get_instance()
+        
         self.periodic_save_sessions.start()
         
         try:
             loop = asyncio.get_running_loop()
             loop.create_task(self.connect_nodes())
             loop.create_task(self.monitor_inactivity())
+            loop.create_task(self.telemetry.initialize())
         except RuntimeError:
             pass
 
@@ -824,6 +863,149 @@ class Music(commands.Cog):
         task = self._inactivity_tasks.pop(guild_id, None)
         if task and not task.done():
             task.cancel()
+
+    def get_session(self, guild_id: int) -> MusicSessionState:
+        if guild_id not in self.sessions:
+            self.sessions[guild_id] = MusicSessionState(guild_id)
+        return self.sessions[guild_id]
+
+    async def precompute_ai_suggestions(self, guild_id: int, current_track_dict: dict):
+        try:
+            session = self.get_session(guild_id)
+            queries = AutoplayEngine.generate_smart_queries(
+                current_track_dict,
+                lang_pref=session.active_language if session.language_established else "auto",
+                mood_pref=session.get_next_balanced_mood()
+            )
+            gathered_playables = []
+            for q in queries[:2]:
+                try:
+                    res = await wavelink.Playable.search(q)
+                    if res:
+                        if isinstance(res, wavelink.Playlist):
+                            gathered_playables.extend(res.tracks[:5])
+                        else:
+                            gathered_playables.extend(res[:5])
+                except Exception:
+                    pass
+
+            if not gathered_playables:
+                return
+
+            candidates = []
+            for t in gathered_playables:
+                candidates.append({
+                    "title": t.title,
+                    "uploader": t.author,
+                    "artist": t.author,
+                    "duration": (t.length / 1000.0) if hasattr(t, "length") and t.length else 0,
+                    "url": getattr(t, "uri", ""),
+                    "id": getattr(t, "identifier", ""),
+                    "source": getattr(t, "source", "youtube"),
+                    "playable": t,
+                })
+
+            scored = self.ranking_model.rank_candidates(candidates, session_state=session)
+            history_set = {
+                normalize_title(t.get("title", ""))
+                for t in session.recent_tracks
+            }
+            history_set.add(normalize_title(current_track_dict.get("title", "")))
+
+            suggestions = []
+            for score, c in scored:
+                if score <= -100.0:
+                    continue
+                if AutoplayEngine.is_fuzzy_duplicate(c, history_set):
+                    continue
+                p = c.get("playable")
+                if p and p not in suggestions:
+                    suggestions.append(p)
+                if len(suggestions) >= 5:
+                    break
+
+            if suggestions:
+                self.ai_suggestions[guild_id] = suggestions
+        except Exception as e:
+            print(f"[ML AI Suggestions] Error: {e}")
+
+    async def fetch_smart_autoplay_track(self, player: wavelink.Player, last_track: Any) -> Optional[wavelink.Playable]:
+        try:
+            guild_id = player.guild.id
+            session = self.get_session(guild_id)
+            last_dict = {
+                "title": getattr(last_track, "title", ""),
+                "uploader": getattr(last_track, "author", ""),
+                "artist": getattr(last_track, "author", ""),
+                "duration": (last_track.length / 1000.0) if hasattr(last_track, "length") and last_track.length else 0,
+                "url": getattr(last_track, "uri", ""),
+                "id": getattr(last_track, "identifier", ""),
+            }
+            session.record_played_track(last_dict, is_manual=False)
+
+            queries = AutoplayEngine.generate_smart_queries(
+                last_dict,
+                lang_pref=session.active_language if session.language_established else "auto",
+                mood_pref=session.get_next_balanced_mood()
+            )
+
+            gathered_candidates = []
+            played_history_set = {
+                normalize_title(t.get("title", "")) for t in session.recent_tracks
+            }
+            for t in session.recent_tracks:
+                if t.get("id"):
+                    played_history_set.add(str(t["id"]))
+                if t.get("url"):
+                    played_history_set.add(str(t["url"]))
+
+            for q in queries[:3]:
+                try:
+                    res = await wavelink.Playable.search(q)
+                    if res:
+                        tracks_list = res.tracks if isinstance(res, wavelink.Playlist) else res
+                        for t in tracks_list[:6]:
+                            c = {
+                                "title": t.title,
+                                "uploader": t.author,
+                                "artist": t.author,
+                                "duration": (t.length / 1000.0) if hasattr(t, "length") and t.length else 0,
+                                "url": getattr(t, "uri", ""),
+                                "id": getattr(t, "identifier", ""),
+                                "source": getattr(t, "source", "youtube"),
+                                "playable": t,
+                            }
+                            if not AutoplayEngine.is_fuzzy_duplicate(c, played_history_set):
+                                gathered_candidates.append(c)
+                except Exception:
+                    continue
+
+                if len(gathered_candidates) >= 12:
+                    break
+
+            if not gathered_candidates:
+                return None
+
+            scored = self.ranking_model.rank_candidates(gathered_candidates, session_state=session)
+            chosen_entry = self.bandit.select_best_track(scored, session_state=session, played_history_set=played_history_set)
+            if chosen_entry and "playable" in chosen_entry:
+                chosen_playable = chosen_entry["playable"]
+                track_dict = {
+                    "title": chosen_playable.title,
+                    "uploader": chosen_playable.author,
+                    "artist": chosen_playable.author,
+                    "duration": (chosen_playable.length / 1000.0) if hasattr(chosen_playable, "length") and chosen_playable.length else 0,
+                    "url": getattr(chosen_playable, "uri", ""),
+                    "id": getattr(chosen_playable, "identifier", ""),
+                }
+                session.record_played_track(track_dict, is_manual=False)
+                self.client.loop.create_task(self.precompute_ai_suggestions(guild_id, track_dict))
+                return chosen_playable
+
+            return None
+        except Exception as e:
+            print(f"[ML AUTOPLAY ERROR] {e}")
+            return None
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -911,7 +1093,7 @@ class Music(commands.Cog):
             elif player.queue.mode == wavelink.QueueMode.loop_all:
                 loop_mode = "loop_all"
 
-        autoplay = player.autoplay == wavelink.AutoPlayMode.enabled
+        autoplay = getattr(player, "smart_autoplay", True)
         
         active_filter = None
         filter_cog = self.client.get_cog("FilterCog")
@@ -1102,9 +1284,12 @@ class Music(commands.Cog):
                         vc.queue.mode = wavelink.QueueMode.normal
 
                     if data.get("autoplay", True):
-                        vc.autoplay = wavelink.AutoPlayMode.enabled
+                        vc.autoplay = wavelink.AutoPlayMode.disabled
+                        vc.smart_autoplay = False
+                        vc.smart_autoplay = True
                     else:
                         vc.autoplay = wavelink.AutoPlayMode.disabled
+                        vc.smart_autoplay = False
 
                     queue_items = data.get("queue", [])
                     for q_item in queue_items:
@@ -1183,7 +1368,8 @@ class Music(commands.Cog):
 
             try:
                 player = await voice_channel.connect(cls=wavelink.Player)
-                player.autoplay = wavelink.AutoPlayMode.enabled
+                player.autoplay = wavelink.AutoPlayMode.disabled
+                player.smart_autoplay = True
                 player.ctx = RestoredMusicContext(self.client, guild, voice_channel, guild.me)
                 player.ctx.voice_client = player
                 print(f"{Fore.GREEN}{Style.BRIGHT}[MUSIC 24/7] Reconnected in {guild.name} ({voice_channel.name}).")
@@ -1328,22 +1514,57 @@ class Music(commands.Cog):
                 thumbnail_url=thumb_url,
                 platform=platform
             )
-            is_autoplay = (getattr(player, "autoplay", None) == wavelink.AutoPlayMode.enabled) or autoplay
+            is_autoplay = getattr(player, "smart_autoplay", True) or autoplay
             view = MusicControlView(player, ctx, track=track, autoplay=is_autoplay, has_card=True)
             await channel.send(file=card_file, view=view)
         except Exception as e:
             print(f"[Music UI] Card file error: {e}")
-            is_autoplay = (getattr(player, "autoplay", None) == wavelink.AutoPlayMode.enabled) or autoplay
+            is_autoplay = getattr(player, "smart_autoplay", True) or autoplay
             view = MusicControlView(player, ctx, track=track, autoplay=is_autoplay, has_card=False)
             await channel.send(view=view)
 
 
     async def on_track_end(self, payload: wavelink.TrackEndEventPayload):
         player = payload.player
+        guild_id = player.guild.id
+        session = self.get_session(guild_id)
+
+        track_dur = (payload.track.length / 1000.0) if payload.track and payload.track.length else 0.0
+        if payload.reason == "finished" and track_dur > 0:
+            await self.telemetry.log_event(
+                event_type=MusicTelemetryEvent.PLAY_COMPLETED,
+                guild_id=guild_id,
+                track_id=getattr(payload.track, "identifier", ""),
+                title=getattr(payload.track, "title", ""),
+                artist=getattr(payload.track, "author", ""),
+                track_duration=track_dur,
+                played_seconds=track_dur,
+            )
         if not player.queue:
             if player.queue.mode == wavelink.QueueMode.loop:
                 await player.play(payload.track)
-            elif player.autoplay == wavelink.AutoPlayMode.enabled:
+            elif getattr(player, "smart_autoplay", True):
+                next_track = await self.fetch_smart_autoplay_track(player, payload.track)
+                if next_track:
+                    await player.play(next_track)
+                    await self.display_player_embed(player, next_track, player.ctx, autoplay=True)
+                elif self.is_247_enabled(player.guild.id):
+                    await player.ctx.send(view=CV2("Queue ended. 24/7 mode is keeping me in the voice channel."))
+                else:
+                    await player.disconnect()
+                    support = Button(label='Support', style=discord.ButtonStyle.link, url=serverLink)
+                    vote = Button(label='Vote', style=discord.ButtonStyle.link, url='https://top.gg/bot//vote')
+                    view = LayoutView(timeout=None)
+                    container = build_container(
+                        TextDisplay("**Queue Ended**"),
+                        Separator(visible=True),
+                        TextDisplay("All tracks have been played, leaving the voice channel."),
+                        Separator(visible=True),
+                        ActionRow(support, vote),
+                    )
+                    view.add_item(container)
+                    await player.ctx.send(view=view)
+
                 await asyncio.sleep(5)
                 if player.current:
                     await self.display_player_embed(player, player.current, player.ctx, autoplay=True)
@@ -1846,7 +2067,8 @@ class Music(commands.Cog):
             vc = ctx.voice_client
             if vc is None:
                 vc = await ctx.author.voice.channel.connect(cls=wavelink.Player)
-                vc.autoplay = wavelink.AutoPlayMode.enabled
+                vc.autoplay = wavelink.AutoPlayMode.disabled
+                vc.smart_autoplay = True
             await ctx.send(view=CV2("Joined the voice channel."))
         else:
             await ctx.send(view=CV2("You need to join a voice channel first."))
@@ -1886,7 +2108,8 @@ class Music(commands.Cog):
             if player is None:
                 try:
                     player = await voice_channel.connect(cls=wavelink.Player)
-                    player.autoplay = wavelink.AutoPlayMode.enabled
+                    player.autoplay = wavelink.AutoPlayMode.disabled
+                    player.smart_autoplay = True
                 except Exception as error:
                     print(f"[Music 24/7] Could not join {voice_channel.id}: {error}")
                     await ctx.send(view=CV2("I couldn't join your voice channel. Check my voice permissions and Lavalink connection."))
@@ -1989,6 +2212,20 @@ class Music(commands.Cog):
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
         player = payload.player
+        guild_id = player.guild.id
+        session = self.get_session(guild_id)
+
+        track_dur = (payload.track.length / 1000.0) if payload.track and payload.track.length else 0.0
+        if payload.reason == "finished" and track_dur > 0:
+            await self.telemetry.log_event(
+                event_type=MusicTelemetryEvent.PLAY_COMPLETED,
+                guild_id=guild_id,
+                track_id=getattr(payload.track, "identifier", ""),
+                title=getattr(payload.track, "title", ""),
+                artist=getattr(payload.track, "author", ""),
+                track_duration=track_dur,
+                played_seconds=track_dur,
+            )
         track = player.current
         guild_id = player.guild.id
 
@@ -2011,6 +2248,20 @@ class Music(commands.Cog):
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
         player = payload.player
+        guild_id = player.guild.id
+        session = self.get_session(guild_id)
+
+        track_dur = (payload.track.length / 1000.0) if payload.track and payload.track.length else 0.0
+        if payload.reason == "finished" and track_dur > 0:
+            await self.telemetry.log_event(
+                event_type=MusicTelemetryEvent.PLAY_COMPLETED,
+                guild_id=guild_id,
+                track_id=getattr(payload.track, "identifier", ""),
+                title=getattr(payload.track, "title", ""),
+                artist=getattr(payload.track, "author", ""),
+                track_duration=track_dur,
+                played_seconds=track_dur,
+            )
         voice_channel = player.channel
 
         if voice_channel:

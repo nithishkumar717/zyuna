@@ -405,12 +405,12 @@ class Owner(commands.Cog):
         await ctx.reply(f"{TICK} | **Successfully Restarting {BotName} It Takes 10 seconds**")
         restart_program()
 
-    @commands.command(name="gitpull", aliases=["update", "gitupdate", "pull"], help="Pulls latest updates from GitHub and restarts if updated.")
+    @commands.command(name="gitpull", aliases=["update", "gitupdate", "pull"], hidden=True)
     @commands.check(is_strict_bot_owner)
     async def gitpull(self, ctx: Context, restart_after: Optional[str] = "yes"):
         """Pull the latest code from GitHub repository with timeout and non-blocking execution."""
         if not await is_strict_bot_owner(ctx):
-            return await ctx.reply(f"{DENIED} | **Access Denied**: This command is strictly restricted to the **Bot Owner** only.", mention_author=False)
+            return
         msg = await ctx.reply("⏳ | Checking for and pulling latest updates from GitHub...", mention_author=False)
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -516,11 +516,7 @@ class Owner(commands.Cog):
 
     @gitpull.error
     async def gitpull_error(self, ctx: Context, error):
-        if isinstance(error, (commands.CheckFailure, commands.NotOwner)):
-            try:
-                await ctx.reply(f"{DENIED} | **Access Denied**: This command is strictly restricted to the **Bot Owner** only.", mention_author=False)
-            except Exception:
-                pass
+        return
 
     @commands.command(name="sync", help="Syncs all database.")
     @commands.is_owner()

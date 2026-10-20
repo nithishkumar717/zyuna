@@ -34,7 +34,6 @@ class Errors(Cog):
       return
 
     if isinstance(error, commands.NotOwner):
-      await ctx.reply(f"{DENIED} | **Access Denied**: This command is strictly restricted to the **Bot Owner** only.", mention_author=False)
       return
 
     if isinstance(error, commands.MissingRequiredArgument):
