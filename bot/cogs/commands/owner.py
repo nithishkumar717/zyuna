@@ -218,7 +218,7 @@ class Owner(commands.Cog):
     def cog_unload(self):
         self.git_auto_watcher.cancel()
 
-    @tasks.loop(seconds=45)
+    @tasks.loop(minutes=5)
     async def git_auto_watcher(self):
         """Automatically watches GitHub origin/main. When a git push is detected, auto-pulls and restarts!"""
         if os.getenv("AUTO_GIT_WATCHER", "true").strip().lower() != "true":

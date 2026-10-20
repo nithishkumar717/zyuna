@@ -278,7 +278,7 @@ def _sync_auto_pull(git_dir):
     )
 
 async def auto_git_update_task():
-    """A background task to periodically check and pull git updates every 10 minutes."""
+    """A background task to periodically check and pull git updates every 30 minutes."""
     await client.wait_until_ready()
     # Wait 5 minutes after boot before first check
     await asyncio.sleep(300)
@@ -314,7 +314,7 @@ async def auto_git_update_task():
         except Exception as e:
             print(f"◈ Auto-Update background check error: {e}")
 
-        await asyncio.sleep(600) # Check every 10 minutes
+        await asyncio.sleep(1800) # Check every 30 minutes
 
 # --- Event Handlers ---
 @client.event
