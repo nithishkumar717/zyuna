@@ -205,7 +205,10 @@ class SearchResultView(LayoutView):
                 return
 
             track = self.results[index]
-            vc = self.ctx.voice_client or await self.ctx.author.voice.channel.connect(cls=wavelink.Player)
+            vc = self.ctx.voice_client
+            if vc is None:
+                vc = await self.ctx.author.voice.channel.connect(cls=wavelink.Player)
+                vc.autoplay = wavelink.AutoPlayMode.enabled
             vc.ctx = self.ctx
 
             if not vc.playing:
@@ -421,48 +424,48 @@ class MusicControlView(LayoutView):
         container.add_item(r0)
 
         # ── ROW 1: Playback Controls (4 buttons) ──
-        self.btn_loop = ui.Button(emoji="<:loop:1562110494607675393>", style=discord.ButtonStyle.secondary, custom_id="btn_loop")
+        self.btn_loop = ui.Button(emoji="<:loop:1562114982286721094>", style=discord.ButtonStyle.secondary, custom_id="btn_loop")
         self.btn_loop.callback = self._cb_loop
 
-        self.btn_prev = ui.Button(emoji="<:previous:1562110918077321367>", style=discord.ButtonStyle.secondary, custom_id="btn_prev")
+        self.btn_prev = ui.Button(emoji="<:previous:1562115003442794589>", style=discord.ButtonStyle.secondary, custom_id="btn_prev")
         self.btn_prev.callback = self._cb_previous
 
-        self.btn_play_pause = ui.Button(emoji="<:playpause:1562110926419791923>", style=discord.ButtonStyle.secondary, custom_id="btn_play_pause")
+        self.btn_play_pause = ui.Button(emoji="<:playpause:1562115013718577222>", style=discord.ButtonStyle.secondary, custom_id="btn_play_pause")
         self.btn_play_pause.callback = self._cb_pause
 
-        self.btn_skip = ui.Button(emoji="<:next:1562112759498416229>", style=discord.ButtonStyle.secondary, custom_id="btn_skip")
+        self.btn_skip = ui.Button(emoji="<:next:1562115023495495750>", style=discord.ButtonStyle.secondary, custom_id="btn_skip")
         self.btn_skip.callback = self._cb_skip
 
         r1 = ui.ActionRow(self.btn_loop, self.btn_prev, self.btn_play_pause, self.btn_skip)
         container.add_item(r1)
 
         # ── ROW 2: Volume & Quick Seek (4 buttons) ──
-        self.btn_volume = ui.Button(emoji="<:volume:1562110966265553017>", style=discord.ButtonStyle.secondary, custom_id="btn_volume")
+        self.btn_volume = ui.Button(emoji="<:volume:1562115086309662812>", style=discord.ButtonStyle.secondary, custom_id="btn_volume")
         self.btn_volume.callback = self._cb_volume
 
-        self.btn_seek_back = ui.Button(emoji="<:sec10:1562110972678897825>", style=discord.ButtonStyle.secondary, custom_id="btn_seek_back")
+        self.btn_seek_back = ui.Button(emoji="<:sec10:1562114949440872470>", style=discord.ButtonStyle.secondary, custom_id="btn_seek_back")
         self.btn_seek_back.callback = self._cb_seek_back
 
-        self.btn_stop = ui.Button(emoji="<:stopmusic:1562110988973772941>", style=discord.ButtonStyle.secondary, custom_id="btn_stop")
+        self.btn_stop = ui.Button(emoji="<:stopmusic:1562114968646848542>", style=discord.ButtonStyle.secondary, custom_id="btn_stop")
         self.btn_stop.callback = self._cb_stop
 
-        self.btn_seek_forward = ui.Button(emoji="<:sec10plus:1562111018233106615>", style=discord.ButtonStyle.secondary, custom_id="btn_seek_forward")
+        self.btn_seek_forward = ui.Button(emoji="<:sec10plus:1562114958949355623>", style=discord.ButtonStyle.secondary, custom_id="btn_seek_forward")
         self.btn_seek_forward.callback = self._cb_seek_forward
 
         r2 = ui.ActionRow(self.btn_volume, self.btn_seek_back, self.btn_stop, self.btn_seek_forward)
         container.add_item(r2)
 
         # ── ROW 3: Shuffle, Search, Favorite & History (4 buttons) ──
-        self.btn_shuffle = ui.Button(emoji="<:shuffle:1562112767484239894>", style=discord.ButtonStyle.secondary, custom_id="btn_shuffle")
+        self.btn_shuffle = ui.Button(emoji="<:shuffle:1562115097093214209>", style=discord.ButtonStyle.secondary, custom_id="btn_shuffle")
         self.btn_shuffle.callback = self._cb_shuffle
 
-        self.btn_search = ui.Button(emoji="<:musicsearch:1562111042555740331>", style=discord.ButtonStyle.secondary, custom_id="btn_search")
+        self.btn_search = ui.Button(emoji="<:musicsearch:1562115115468193894>", style=discord.ButtonStyle.secondary, custom_id="btn_search")
         self.btn_search.callback = self._cb_search
 
         self.btn_favorite = ui.Button(emoji="<a:heart:1562113133575933972>", style=discord.ButtonStyle.secondary, custom_id="btn_favorite")
         self.btn_favorite.callback = self._cb_favorite
 
-        self.btn_history = ui.Button(emoji="<:history:1562111095164903484>", style=discord.ButtonStyle.secondary, custom_id="btn_history")
+        self.btn_history = ui.Button(emoji="<:history:1562115126180716644>", style=discord.ButtonStyle.secondary, custom_id="btn_history")
         self.btn_history.callback = self._cb_history
 
         r3 = ui.ActionRow(self.btn_shuffle, self.btn_search, self.btn_favorite, self.btn_history)
@@ -493,7 +496,7 @@ class MusicControlView(LayoutView):
 
         if hasattr(self, "btn_autoplay"):
             self.btn_autoplay.style = discord.ButtonStyle.success if is_autoplay else discord.ButtonStyle.secondary
-            self.btn_autoplay.emoji = "<a:enable:1562111115662598295>" if is_autoplay else "<:disable:1562111138425082017>"
+            self.btn_autoplay.emoji = "<a:enable:1562111115662598295>" if is_autoplay else "<:disable:1562115051215659078>"
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not self.player or not getattr(self.player, "playing", False):
@@ -580,7 +583,7 @@ class MusicControlView(LayoutView):
         if self.cog and hasattr(self.cog, "remove_session"):
             self.cog.remove_session(guild_id)
         embed = discord.Embed(
-            description="<:stopmusic:1562110988973772941> **Stopped playback and cleared the queue.**",
+            description="<:stopmusic:1562114968646848542> **Stopped playback and cleared the queue.**",
             color=0x2B2D31
         )
         try:
@@ -603,7 +606,7 @@ class MusicControlView(LayoutView):
         if not await self.interaction_check(interaction): return
         if self.player.queue:
             random.shuffle(self.player.queue)
-            await interaction.response.send_message(f"<:shuffle:1562112767484239894> Queue shuffled by **{interaction.user.display_name}**.", ephemeral=True)
+            await interaction.response.send_message(f"<:shuffle:1562115097093214209> Queue shuffled by **{interaction.user.display_name}**.", ephemeral=True)
         else:
             await interaction.response.send_message("❌ Queue is empty.", ephemeral=True)
 
@@ -624,7 +627,7 @@ class MusicControlView(LayoutView):
         history = track_histories.get(guild_id, [])
         queue_len = len(self.player.queue) if hasattr(self.player, "queue") else 0
         if not history and queue_len == 0:
-            return await interaction.response.send_message("<:history:1562111095164903484> No tracks in history or upcoming queue.", ephemeral=True)
+            return await interaction.response.send_message("<:history:1562115126180716644> No tracks in history or upcoming queue.", ephemeral=True)
 
         lines = []
         if history:
@@ -636,7 +639,7 @@ class MusicControlView(LayoutView):
             for i, t in enumerate(list(self.player.queue)[:5]):
                 lines.append(f"{i+1}. `{getattr(t, 'title', str(t))[:50]}`")
 
-        embed = discord.Embed(title="<:history:1562111095164903484> Session History & Queue", description="\n".join(lines), color=0x2B2D31)
+        embed = discord.Embed(title="<:history:1562115126180716644> Session History & Queue", description="\n".join(lines), color=0x2B2D31)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def _cb_autoplay(self, interaction: discord.Interaction):
@@ -649,7 +652,7 @@ class MusicControlView(LayoutView):
         except Exception:
             pass
         status = "Disabled" if is_auto else "Enabled"
-        emoji = "<:disable:1562111138425082017>" if is_auto else "<a:enable:1562111115662598295>"
+        emoji = "<:disable:1562115051215659078>" if is_auto else "<a:enable:1562111115662598295>"
         await interaction.response.send_message(f"{emoji} Autoplay **{status}**.", ephemeral=True)
 
     async def _cb_open_controls(self, interaction: discord.Interaction):
@@ -919,7 +922,7 @@ class Music(commands.Cog):
                     else:
                         vc.queue.mode = wavelink.QueueMode.normal
 
-                    if data.get("autoplay"):
+                    if data.get("autoplay", True):
                         vc.autoplay = wavelink.AutoPlayMode.enabled
                     else:
                         vc.autoplay = wavelink.AutoPlayMode.disabled
@@ -1149,7 +1152,10 @@ class Music(commands.Cog):
             await ctx.send(view=CV2(f"{WARNING} you need to be in a voice channel to use this command."))
             return
 
-        vc = ctx.voice_client or await ctx.author.voice.channel.connect(cls=wavelink.Player)
+        vc = ctx.voice_client
+        if vc is None:
+            vc = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+            vc.autoplay = wavelink.AutoPlayMode.enabled
         vc.ctx = ctx
         
         
@@ -1157,8 +1163,6 @@ class Music(commands.Cog):
             if ctx.voice_client and ctx.voice_client.channel != ctx.author.voice.channel:
                 await ctx.send(view=CV2(f"You must be connected to {ctx.voice_client.channel.mention} to play."))
                 return
-        vc.autoplay = wavelink.AutoPlayMode.disabled
-
         """if re.match(SPOTIFY_TRACK_REGEX, query):
             await self.handle_spotify_link(ctx, vc, query, "track")
         elif re.match(SPOTIFY_PLAYLIST_REGEX, query):
@@ -1609,7 +1613,10 @@ class Music(commands.Cog):
     @commands.cooldown(1, 3, commands.BucketType.user)
     async def join(self, ctx: commands.Context):
         if ctx.author.voice:
-            await ctx.author.voice.channel.connect(cls=wavelink.Player)
+            vc = ctx.voice_client
+            if vc is None:
+                vc = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+                vc.autoplay = wavelink.AutoPlayMode.enabled
             await ctx.send(view=CV2("Joined the voice channel."))
         else:
             await ctx.send(view=CV2("You need to join a voice channel first."))
