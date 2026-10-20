@@ -93,11 +93,11 @@ class zyuna(commands.AutoShardedBot):
         guild_count = len(self.guilds)
 
         self.status_list = [
-            (discord.ActivityType.playing, f"{prefix}help | Security in your Server"),
+            (discord.ActivityType.listening, f"{prefix}help | {prefix}play"),
             (discord.ActivityType.watching, f"{user_count} users"),
             (discord.ActivityType.watching, f"{guild_count} servers"),
-            (discord.ActivityType.listening, "Killing Nukers"),
-            (discord.ActivityType.playing, f"Protector {BotName}"),
+            (discord.ActivityType.listening, f"High-Fidelity Audio • {BotName}"),
+            (discord.ActivityType.playing, f"{BotName} Studio"),
         ]
 
         current = self.status_list[self.status_index % len(self.status_list)]

@@ -33,10 +33,8 @@ from utils.config import serverLink, websiteLink, BotName, BRAND_NAME
 ACCENT_COLOR = 0xFF2A4D
 
 CORE_LABELS = {
-    "Security Commands", "Automod Commands", "Moderation Commands",
-    "Logging Commands", "Verification Commands", "Ticket",
-    "Voice Commands", "Music Commands", "Welcomer Commands",
-    "Server Commands", "Ignore Commands", "Joindm"
+    "Music Commands", "Logging Commands", "Verification Commands", "Ticket",
+    "Welcomer Commands", "Server Commands", "Ignore Commands", "Joindm"
 }
 
 
