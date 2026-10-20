@@ -421,58 +421,58 @@ class MusicControlView(LayoutView):
         container.add_item(r0)
 
         # ── ROW 1: Playback Controls (4 buttons) ──
-        self.btn_loop = ui.Button(emoji="<:loop:1548594863530971196>", style=discord.ButtonStyle.secondary, custom_id="btn_loop")
+        self.btn_loop = ui.Button(emoji="<:loop:1562110494607675393>", style=discord.ButtonStyle.secondary, custom_id="btn_loop")
         self.btn_loop.callback = self._cb_loop
 
-        self.btn_prev = ui.Button(emoji="<:previous:1548595151755026442>", style=discord.ButtonStyle.secondary, custom_id="btn_prev")
+        self.btn_prev = ui.Button(emoji="<:previous:1562110918077321367>", style=discord.ButtonStyle.secondary, custom_id="btn_prev")
         self.btn_prev.callback = self._cb_previous
 
-        self.btn_play_pause = ui.Button(emoji="<:playpause:1548638534573752381>", style=discord.ButtonStyle.secondary, custom_id="btn_play_pause")
+        self.btn_play_pause = ui.Button(emoji="<:playpause:1562110926419791923>", style=discord.ButtonStyle.secondary, custom_id="btn_play_pause")
         self.btn_play_pause.callback = self._cb_pause
 
-        self.btn_skip = ui.Button(emoji="<:next:1548595448602693652>", style=discord.ButtonStyle.secondary, custom_id="btn_skip")
+        self.btn_skip = ui.Button(emoji="<:next:1560892395837591592>", style=discord.ButtonStyle.secondary, custom_id="btn_skip")
         self.btn_skip.callback = self._cb_skip
 
         r1 = ui.ActionRow(self.btn_loop, self.btn_prev, self.btn_play_pause, self.btn_skip)
         container.add_item(r1)
 
         # ── ROW 2: Volume & Quick Seek (4 buttons) ──
-        self.btn_volume = ui.Button(emoji="<:volume:1554911786480697405>", style=discord.ButtonStyle.secondary, custom_id="btn_volume")
+        self.btn_volume = ui.Button(emoji="<:volume:1562110966265553017>", style=discord.ButtonStyle.secondary, custom_id="btn_volume")
         self.btn_volume.callback = self._cb_volume
 
-        self.btn_seek_back = ui.Button(emoji="<:10sec:1554917901969006665>", style=discord.ButtonStyle.secondary, custom_id="btn_seek_back")
+        self.btn_seek_back = ui.Button(emoji="<:sec10:1562110972678897825>", style=discord.ButtonStyle.secondary, custom_id="btn_seek_back")
         self.btn_seek_back.callback = self._cb_seek_back
 
-        self.btn_stop = ui.Button(emoji="<:stopmusic:1554923334913884250>", style=discord.ButtonStyle.secondary, custom_id="btn_stop")
+        self.btn_stop = ui.Button(emoji="<:stopmusic:1562110988973772941>", style=discord.ButtonStyle.secondary, custom_id="btn_stop")
         self.btn_stop.callback = self._cb_stop
 
-        self.btn_seek_forward = ui.Button(emoji="<:10secplus:1554918644935294986>", style=discord.ButtonStyle.secondary, custom_id="btn_seek_forward")
+        self.btn_seek_forward = ui.Button(emoji="<:sec10plus:1562111018233106615>", style=discord.ButtonStyle.secondary, custom_id="btn_seek_forward")
         self.btn_seek_forward.callback = self._cb_seek_forward
 
         r2 = ui.ActionRow(self.btn_volume, self.btn_seek_back, self.btn_stop, self.btn_seek_forward)
         container.add_item(r2)
 
         # ── ROW 3: Shuffle, Search, Favorite & History (4 buttons) ──
-        self.btn_shuffle = ui.Button(emoji="<:shuffle:1554917090366849024>", style=discord.ButtonStyle.secondary, custom_id="btn_shuffle")
+        self.btn_shuffle = ui.Button(emoji="<:shuffle:1560892674255491172>", style=discord.ButtonStyle.secondary, custom_id="btn_shuffle")
         self.btn_shuffle.callback = self._cb_shuffle
 
-        self.btn_search = ui.Button(emoji="<:musicsearch:1554920989589110884>", style=discord.ButtonStyle.secondary, custom_id="btn_search")
+        self.btn_search = ui.Button(emoji="<:musicsearch:1562111042555740331>", style=discord.ButtonStyle.secondary, custom_id="btn_search")
         self.btn_search.callback = self._cb_search
 
-        self.btn_favorite = ui.Button(emoji="<a:heart:1548687259744866314>", style=discord.ButtonStyle.secondary, custom_id="btn_favorite")
+        self.btn_favorite = ui.Button(emoji="<a:heart:1562111081789395115>", style=discord.ButtonStyle.secondary, custom_id="btn_favorite")
         self.btn_favorite.callback = self._cb_favorite
 
-        self.btn_history = ui.Button(emoji="<:history:1554924675035959347>", style=discord.ButtonStyle.secondary, custom_id="btn_history")
+        self.btn_history = ui.Button(emoji="<:history:1562111095164903484>", style=discord.ButtonStyle.secondary, custom_id="btn_history")
         self.btn_history.callback = self._cb_history
 
         r3 = ui.ActionRow(self.btn_shuffle, self.btn_search, self.btn_favorite, self.btn_history)
         container.add_item(r3)
 
         # ── ROW 4: Autoplay & Music Control (2 buttons) ──
-        self.btn_autoplay = ui.Button(emoji="<a:enable:1548704224974737569>", label="Autoplay", style=discord.ButtonStyle.secondary, custom_id="btn_autoplay")
+        self.btn_autoplay = ui.Button(emoji="<a:enable:1562111115662598295>", label="Autoplay", style=discord.ButtonStyle.secondary, custom_id="btn_autoplay")
         self.btn_autoplay.callback = self._cb_autoplay
 
-        self.btn_open_controls = ui.Button(emoji="<:musiccontrol:1551982339393851493>", label="Music Control", style=discord.ButtonStyle.secondary, custom_id="btn_open_controls")
+        self.btn_open_controls = ui.Button(emoji="<:musiccontrol:1562111127259848805>", label="Music Control", style=discord.ButtonStyle.secondary, custom_id="btn_open_controls")
         self.btn_open_controls.callback = self._cb_open_controls
 
         r4 = ui.ActionRow(self.btn_autoplay, self.btn_open_controls)
@@ -493,7 +493,7 @@ class MusicControlView(LayoutView):
 
         if hasattr(self, "btn_autoplay"):
             self.btn_autoplay.style = discord.ButtonStyle.success if is_autoplay else discord.ButtonStyle.secondary
-            self.btn_autoplay.emoji = "<a:enable:1548704224974737569>" if is_autoplay else "<:disable:1548686459865792583>"
+            self.btn_autoplay.emoji = "<a:enable:1562111115662598295>" if is_autoplay else "<:disable:1562111138425082017>"
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if not self.player or not getattr(self.player, "playing", False):
@@ -580,7 +580,7 @@ class MusicControlView(LayoutView):
         if self.cog and hasattr(self.cog, "remove_session"):
             self.cog.remove_session(guild_id)
         embed = discord.Embed(
-            description="<:stopmusic:1554923334913884250> **Stopped playback and cleared the queue.**",
+            description="<:stopmusic:1562110988973772941> **Stopped playback and cleared the queue.**",
             color=0x2B2D31
         )
         try:
@@ -603,7 +603,7 @@ class MusicControlView(LayoutView):
         if not await self.interaction_check(interaction): return
         if self.player.queue:
             random.shuffle(self.player.queue)
-            await interaction.response.send_message(f"<:shuffle:1554917090366849024> Queue shuffled by **{interaction.user.display_name}**.", ephemeral=True)
+            await interaction.response.send_message(f"<:shuffle:1560892674255491172> Queue shuffled by **{interaction.user.display_name}**.", ephemeral=True)
         else:
             await interaction.response.send_message("❌ Queue is empty.", ephemeral=True)
 
@@ -615,7 +615,7 @@ class MusicControlView(LayoutView):
         if not await self.interaction_check(interaction): return
         track = self.player.current
         if track:
-            await interaction.response.send_message(f"<a:heart:1548687259744866314> Added **{track.title}** to your favorites!", ephemeral=True)
+            await interaction.response.send_message(f"<a:heart:1562111081789395115> Added **{track.title}** to your favorites!", ephemeral=True)
         else:
             await interaction.response.send_message("❌ No track currently playing.", ephemeral=True)
 
@@ -624,7 +624,7 @@ class MusicControlView(LayoutView):
         history = track_histories.get(guild_id, [])
         queue_len = len(self.player.queue) if hasattr(self.player, "queue") else 0
         if not history and queue_len == 0:
-            return await interaction.response.send_message("<:history:1554924675035959347> No tracks in history or upcoming queue.", ephemeral=True)
+            return await interaction.response.send_message("<:history:1562111095164903484> No tracks in history or upcoming queue.", ephemeral=True)
 
         lines = []
         if history:
@@ -636,7 +636,7 @@ class MusicControlView(LayoutView):
             for i, t in enumerate(list(self.player.queue)[:5]):
                 lines.append(f"{i+1}. `{getattr(t, 'title', str(t))[:50]}`")
 
-        embed = discord.Embed(title="<:history:1554924675035959347> Session History & Queue", description="\n".join(lines), color=0x2B2D31)
+        embed = discord.Embed(title="<:history:1562111095164903484> Session History & Queue", description="\n".join(lines), color=0x2B2D31)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def _cb_autoplay(self, interaction: discord.Interaction):
@@ -649,7 +649,7 @@ class MusicControlView(LayoutView):
         except Exception:
             pass
         status = "Disabled" if is_auto else "Enabled"
-        emoji = "<:disable:1548686459865792583>" if is_auto else "<a:enable:1548704224974737569>"
+        emoji = "<:disable:1562111138425082017>" if is_auto else "<a:enable:1562111115662598295>"
         await interaction.response.send_message(f"{emoji} Autoplay **{status}**.", ephemeral=True)
 
     async def _cb_open_controls(self, interaction: discord.Interaction):
