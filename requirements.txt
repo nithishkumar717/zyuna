@@ -1,6 +1,6 @@
 Quart
 discord
-discord.py
+discord.py[voice]
 discord.ui
 jishaku
 mcstatus

@@ -2359,7 +2359,7 @@ class Music(commands.Cog):
             notice = f"I couldn't load **{track_title[:150]}** from the audio source. Try another track."
 
         now = asyncio.get_running_loop().time()
-        if now - self._track_error_notice_at.get(guild_id, 0.0) < 15:
+        if now - self._track_error_notice_at.get(guild_id, 0.0) < 60:
             return
         self._track_error_notice_at[guild_id] = now
 
@@ -2386,6 +2386,22 @@ class Music(commands.Cog):
                 await voice_channel.edit(status=None)
             except Exception:
                 pass
+
+        # Do not let smart autoplay repeatedly pick more unavailable videos after
+        # a source load failure. Continue an explicit queue, but stop autoplay.
+        reason = str(payload.reason).replace("_", "").replace(" ", "").lower()
+        if reason == "loadfailed":
+            if not player.queue.is_empty:
+                next_track = await player.queue.get_wait()
+                await player.play(next_track)
+                ctx = getattr(player, "ctx", None)
+                if ctx:
+                    await self.display_player_embed(player, next_track, ctx)
+            else:
+                self.remove_session(guild_id)
+                if not self.is_247_enabled(guild_id):
+                    await player.disconnect()
+            return
 
         if not player.queue and player.queue.mode != wavelink.QueueMode.loop and not getattr(player, "smart_autoplay", True):
             self.remove_session(player.guild.id)
