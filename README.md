@@ -156,6 +156,10 @@ Zyuna/
    python zyuna.py
    ```
 
+### Git Updates
+
+When started from a Git checkout, the bot safely fast-forwards from `origin/main` at startup. One background watcher checks again 5 minutes after the bot is ready and every 30 minutes after that; the owner-only `.gitpull` command can also trigger an update. Before an update, the updater temporarily stashes unignored local changes and restores them afterward; ignored files such as `.env` stay in place. If restoring local edits conflicts with incoming changes, the update is rolled back and the local edits are restored. `AUTO_GIT_WATCHER=false` in `.env` disables periodic checks. The public repository can be pulled without a GitHub token.
+
 ---
 
 ## ✦ License

@@ -794,6 +794,7 @@ class Music(commands.Cog):
         self._ai_suggestion_track_keys: Dict[int, str] = {}
         self.player_inactivity = {}
         self._inactivity_tasks = {}
+        self._track_error_notice_at: Dict[int, float] = {}
         self._247_modes = self.load_247_modes()
         self._restoring = False
         self._restored = False
@@ -1539,8 +1540,10 @@ class Music(commands.Cog):
 
     async def on_track_end(self, payload: wavelink.TrackEndEventPayload):
         player = payload.player
+        if player is None or player.guild is None:
+            return
+
         guild_id = player.guild.id
-        session = self.get_session(guild_id)
 
         track_dur = (payload.track.length / 1000.0) if payload.track and payload.track.length else 0.0
         if payload.reason == "finished" and track_dur > 0:
@@ -2314,26 +2317,18 @@ class Music(commands.Cog):
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
         player = payload.player
-        guild_id = player.guild.id
-        session = self.get_session(guild_id)
+        track = payload.track
+        if player is None or player.guild is None or track is None:
+            return
 
-        track_dur = (payload.track.length / 1000.0) if payload.track and payload.track.length else 0.0
-        if payload.reason == "finished" and track_dur > 0:
-            await self.telemetry.log_event(
-                event_type=MusicTelemetryEvent.PLAY_COMPLETED,
-                guild_id=guild_id,
-                track_id=getattr(payload.track, "identifier", ""),
-                title=getattr(payload.track, "title", ""),
-                artist=getattr(payload.track, "author", ""),
-                track_duration=track_dur,
-                played_seconds=track_dur,
-            )
-        track = player.current
         guild_id = player.guild.id
 
         voice_channel = player.channel
         if voice_channel:
-            await voice_channel.edit(status=f"{MUSIC_ALT1} Playing: {track.title}")  # type: ignore
+            try:
+                await voice_channel.edit(status=f"{MUSIC_ALT1} Playing: {track.title}")  # type: ignore
+            except (discord.Forbidden, discord.HTTPException):
+                pass
 
         if guild_id not in track_histories:
             track_histories[guild_id] = []
@@ -2348,22 +2343,42 @@ class Music(commands.Cog):
         self.update_session(player)
 
     @commands.Cog.listener()
+    async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload):
+        player = payload.player
+        if player is None or player.guild is None:
+            return
+
+        guild_id = player.guild.id
+        exception = payload.exception or {}
+        detail = str(exception.get("message") or exception.get("cause") or "Playback failed")
+        track_title = str(getattr(payload.track, "title", "this track"))
+
+        if "login" in detail.lower() or "sign in" in detail.lower():
+            notice = f"I couldn't play **{track_title[:150]}** because YouTube requires sign-in for that video. Try another track."
+        else:
+            notice = f"I couldn't load **{track_title[:150]}** from the audio source. Try another track."
+
+        now = asyncio.get_running_loop().time()
+        if now - self._track_error_notice_at.get(guild_id, 0.0) < 15:
+            return
+        self._track_error_notice_at[guild_id] = now
+
+        print(f"[Music] Track load failed in guild {guild_id}: {detail[:300]}")
+        ctx = getattr(player, "ctx", None)
+        channel = getattr(ctx, "channel", None)
+        if channel:
+            try:
+                await channel.send(view=CV2(notice))
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
+    @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
         player = payload.player
-        guild_id = player.guild.id
-        session = self.get_session(guild_id)
+        if player is None or player.guild is None:
+            return
 
-        track_dur = (payload.track.length / 1000.0) if payload.track and payload.track.length else 0.0
-        if payload.reason == "finished" and track_dur > 0:
-            await self.telemetry.log_event(
-                event_type=MusicTelemetryEvent.PLAY_COMPLETED,
-                guild_id=guild_id,
-                track_id=getattr(payload.track, "identifier", ""),
-                title=getattr(payload.track, "title", ""),
-                artist=getattr(payload.track, "author", ""),
-                track_duration=track_dur,
-                played_seconds=track_dur,
-            )
+        guild_id = player.guild.id
         voice_channel = player.channel
 
         if voice_channel:

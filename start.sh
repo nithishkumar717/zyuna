@@ -5,16 +5,21 @@
 
 set -e
 
-# Pull latest updates from GitHub with self-healing fallback
-if command -v git &> /dev/null; then
-    if [ -d ".git" ] || [ -d "../.git" ]; then
-        echo "◈ Pulling latest updates from GitHub..."
-        git fetch origin main --quiet || true
-        git merge --abort 2>/dev/null || true
-        git reset --hard origin/main 2>/dev/null || git pull origin main || echo "◈ Warning: Git pull failed, starting with current files..."
-    fi
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+if [[ -n "${PYTHON:-}" ]]; then
+    PYTHON_BIN="$PYTHON"
+elif [[ -x "$SCRIPT_DIR/.venv/bin/python" ]]; then
+    PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python3)"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python)"
+else
+    echo "✖ Python was not found on PATH."
+    exit 1
 fi
 
-# Run Zyuna
-echo "◈ Starting Zyuna..."
-python zyuna.py
+echo "◈ Starting Zyuna from $SCRIPT_DIR..."
+exec "$PYTHON_BIN" "$SCRIPT_DIR/zyuna.py"

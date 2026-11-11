@@ -2,7 +2,6 @@
 
 import sys
 import os
-import subprocess
 # os.system("")
 import asyncio
 import traceback
@@ -39,75 +38,20 @@ for _p in [
     if _p and os.path.exists(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
 
-REPO_URL = "https://github.com/nithishkumar717/zyuna.git"
-
-def _find_git_dir():
-    check_paths = [
-        os.getcwd(),
-        os.path.dirname(os.path.abspath(__file__)),
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ]
-    for path in check_paths:
-        if os.path.exists(os.path.join(path, ".git")):
-            return path
-    return None
-
-def _ensure_git_repo():
-    git_dir = _find_git_dir()
-    if git_dir:
-        return git_dir
-
-    target = os.getcwd()
-
-    try:
-        print(f"\033[36m◈ [Git Setup] Initializing git in {target} and connecting to {REPO_URL}...\033[0m")
-        subprocess.run(["git", "init"], cwd=target, capture_output=True, text=True, check=True)
-        remotes_out = subprocess.run(["git", "remote"], cwd=target, capture_output=True, text=True).stdout
-        if "origin" in remotes_out.split():
-            subprocess.run(["git", "remote", "set-url", "origin", REPO_URL], cwd=target, capture_output=True, text=True)
-        else:
-            subprocess.run(["git", "remote", "add", "origin", REPO_URL], cwd=target, capture_output=True, text=True)
-
-        subprocess.run(["git", "fetch", "origin", "main"], cwd=target, capture_output=True, text=True, check=True)
-        subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=target, capture_output=True, text=True, check=True)
-        subprocess.run(["git", "branch", "-M", "main"], cwd=target, capture_output=True, text=True)
-        subprocess.run(["git", "branch", "--set-upstream-to=origin/main", "main"], cwd=target, capture_output=True, text=True)
-        print(f"\033[32m✔ [Git Setup] Successfully connected repository to GitHub main branch!\033[0m")
-        return target
-    except Exception as e:
-        print(f"\033[33m◈ [Git Setup] Auto-init note: {e}\033[0m")
-        return None
-
 def _auto_git_pull():
-    """Automatically pulls the latest code from GitHub on startup with self-healing fallback."""
+    """Safely fast-forward this checkout at startup, then restart if code changed."""
     try:
-        git_dir = _ensure_git_repo()
-        if git_dir:
-            subprocess.run(["git", "fetch", "origin", "main"], cwd=git_dir, capture_output=True, text=True, timeout=20)
-            result = subprocess.run(
-                ["git", "pull", "origin", "main"],
-                cwd=git_dir,
-                capture_output=True,
-                text=True,
-                timeout=20
-            )
-            out = result.stdout.strip()
-            if result.returncode == 0:
-                if "Already up to date" in out or "Already up-to-date" in out:
-                    print("\033[36m◈ Auto-Update: Code is up to date.\033[0m")
-                else:
-                    print(f"\033[32m◈ Auto-Update: Pulled latest changes from GitHub:\n{out}\033[0m")
-            else:
-                # Self-healing fallback: reset --hard origin/main clears conflicts, unmerged files, and dirty worktrees
-                print("\033[33m◈ Auto-Update: Conflict or unmerged files detected, recovering with reset --hard origin/main...\033[0m")
-                subprocess.run(["git", "merge", "--abort"], cwd=git_dir, capture_output=True, text=True)
-                reset_res = subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=git_dir, capture_output=True, text=True)
-                if reset_res.returncode == 0:
-                    print("\033[32m✔ Auto-Update: Successfully recovered and synced with origin/main!\033[0m")
-                else:
-                    print(f"\033[33m◈ Auto-Update recovery note: {reset_res.stderr.strip()}\033[0m")
+        from git_update import sync_repository
+
+        result = sync_repository()
+        if not result.success:
+            print(f"\033[33m◈ Auto-Update skipped: {result.message}\033[0m")
+        elif result.updated:
+            print(f"\033[32m◈ Auto-Update: {result.message}\033[0m")
+            print("\033[33m◈ Restarting to load the updated code...\033[0m")
+            os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0]), *sys.argv[1:]])
         else:
-            print("\033[33m◈ Auto-Update note: No git repository could be established, skipping startup pull.\033[0m")
+            print(f"\033[36m◈ Auto-Update: {result.message}\033[0m")
     except Exception as e:
         print(f"\033[33m◈ Auto-Update note: {e}\033[0m")
 
@@ -216,63 +160,6 @@ async def update_stats():
         
         await asyncio.sleep(600) # Update every 10 minutes
 
-def _sync_auto_pull(git_dir):
-    env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    env["GIT_ASKPASS"] = ""
-    env["GIT_PAGER"] = "cat"
-    env["GIT_EDITOR"] = "true"
-    env["LC_ALL"] = "C.UTF-8"
-    env["LANG"] = "C.UTF-8"
-    return subprocess.run(
-        ["git", "pull", "--no-rebase", "--autostash", "--no-edit", "origin", "main"],
-        cwd=git_dir,
-        capture_output=True,
-        text=True,
-        stdin=subprocess.DEVNULL,
-        timeout=30,
-        env=env
-    )
-
-async def auto_git_update_task():
-    """A background task to periodically check and pull git updates every 30 minutes."""
-    await client.wait_until_ready()
-    # Wait 5 minutes after boot before first check
-    await asyncio.sleep(300)
-    while not client.is_closed():
-        try:
-            git_dir = _find_git_dir()
-            if git_dir:
-                proc = await asyncio.to_thread(_sync_auto_pull, git_dir)
-                out = proc.stdout.strip()
-                err = proc.stderr.strip()
-
-                if proc.returncode == 0:
-                    if "Already up to date" not in out and "Already up-to-date" not in out and len(out) > 0:
-                        print(f"\033[32m◈ Auto-Update: Pulled new updates from GitHub:\n{out}\033[0m")
-                        print(f"\033[33m◈ Auto-Update: Restarting {BRAND_NAME} to apply updates...\033[0m")
-                        log_channel = client.get_channel(LOG_CHANNEL_ID)
-                        if log_channel:
-                            try:
-                                embed = discord.Embed(
-                                    title="◈ Auto Git Update",
-                                    description=f"Pulled new updates from GitHub repository:\n```\n{out[:1500]}\n```\nRestarting {BRAND_NAME} to apply changes...",
-                                    color=0x2ecc71
-                                )
-                                embed.timestamp = discord.utils.utcnow()
-                                await log_channel.send(embed=embed)
-                            except Exception:
-                                pass
-                        await asyncio.sleep(2)
-                        restart_program()
-                else:
-                    if err:
-                        print(f"\033[33m◈ Auto-Update background check notice: {err}\033[0m")
-        except Exception as e:
-            print(f"◈ Auto-Update background check error: {e}")
-
-        await asyncio.sleep(1800) # Check every 30 minutes
-
 # --- Event Handlers ---
 @client.event
 async def on_ready():
@@ -306,7 +193,6 @@ async def on_ready():
 
     client.loop.create_task(sync_commands())
     client.loop.create_task(update_stats())
-    client.loop.create_task(auto_git_update_task())
 
 
 @client.event
