@@ -424,12 +424,13 @@ class SuggestedByAISelect(ui.Select):
 
 class MusicControlView(LayoutView):
     """Modern Components V2 Music Player Controls matching Yuna's aesthetic."""
-    def __init__(self, player, ctx, track=None, autoplay=False, has_card=True):
+    def __init__(self, player, ctx, track=None, autoplay=False, has_card=True, card_filename="music_card.png"):
         super().__init__(timeout=None)
         self.player = player
         self.ctx = ctx
         self.track = track
         self.has_card = has_card
+        self.card_filename = card_filename
         self.cog = ctx.cog if ctx and hasattr(ctx, "cog") else None
         self.guild_id = player.guild.id if player and player.guild else 0
         self.build_components()
@@ -443,7 +444,7 @@ class MusicControlView(LayoutView):
 
         # ── TOP: Music Player Card (Components V2 Media Gallery) ──
         if self.has_card:
-            mg = ui.MediaGallery(discord.MediaGalleryItem("attachment://music_card.png"))
+            mg = ui.MediaGallery(discord.MediaGalleryItem(f"attachment://{self.card_filename}"))
             container.add_item(mg)
         elif self.track:
             sec = getattr(self.track, 'length', 0) // 1000
@@ -795,6 +796,15 @@ class Music(commands.Cog):
         self.player_inactivity = {}
         self._inactivity_tasks = {}
         self._track_error_notice_at: Dict[int, float] = {}
+        self._card_theme_counts: Dict[int, int] = {}
+        self._active_card_themes: Dict[int, tuple[str, str]] = {}
+        self._player_messages: Dict[int, discord.Message] = {}
+        self._player_card_locks: Dict[int, asyncio.Lock] = {}
+        self._card_render_semaphore = asyncio.Semaphore(1)
+        self._track_fallback_pending: set[int] = set()
+        self._track_fallback_tried: Dict[int, set[str]] = {}
+        self._track_fallback_suppress_end: Dict[int, set[str]] = {}
+        self._track_fallback_last_attempt: Dict[tuple[int, str], float] = {}
         self._247_modes = self.load_247_modes()
         self._restoring = False
         self._restored = False
@@ -808,6 +818,7 @@ class Music(commands.Cog):
         self.telemetry = InteractionLogger.get_instance()
         
         self.periodic_save_sessions.start()
+        self.refresh_player_cards.start()
         
         try:
             loop = asyncio.get_running_loop()
@@ -821,6 +832,8 @@ class Music(commands.Cog):
         self.save_all_sessions_sync()
         if hasattr(self, "periodic_save_sessions"):
             self.periodic_save_sessions.cancel()
+        if hasattr(self, "refresh_player_cards"):
+            self.refresh_player_cards.cancel()
 
     def load_247_modes(self) -> Dict[str, int]:
         try:
@@ -1206,6 +1219,30 @@ class Music(commands.Cog):
         except Exception:
             pass
 
+    @tasks.loop(seconds=30)
+    async def refresh_player_cards(self):
+        """Refresh progress cards in-place without posting a new message."""
+        for player in tuple(self.client.voice_clients):
+            guild = getattr(player, "guild", None)
+            track = getattr(player, "current", None)
+            if not guild or not track or not getattr(player, "playing", False):
+                continue
+            if guild.id not in self._player_messages:
+                continue
+
+            ctx = getattr(player, "ctx", None)
+            if not ctx:
+                continue
+
+            try:
+                await self._render_player_card(player, track, ctx)
+            except Exception as error:
+                print(f"[Music UI] Could not refresh card in guild {guild.id}: {error}")
+
+    @refresh_player_cards.before_loop
+    async def before_refresh_player_cards(self):
+        await self.client.wait_until_ready()
+
     async def reconstruct_track(self, track_data: dict) -> wavelink.Playable | None:
         if not track_data or not isinstance(track_data, dict):
             return None
@@ -1482,12 +1519,24 @@ class Music(commands.Cog):
         asyncio.create_task(self.restore_music_sessions())
 
 
+    def _get_music_card_theme(self, guild_id: int, track) -> str:
+        track_key = str(
+            getattr(track, "identifier", "")
+            or getattr(track, "uri", "")
+            or f"{getattr(track, 'title', '')}:{getattr(track, 'author', '')}"
+        )
+        active = self._active_card_themes.get(guild_id)
+        if active and active[0] == track_key:
+            return active[1]
+
+        count = self._card_theme_counts.get(guild_id, 0)
+        theme = MusicCardGenerator.get_theme_for_count(count)
+        self._card_theme_counts[guild_id] = count + 1
+        self._active_card_themes[guild_id] = (track_key, theme)
+        return theme
+
     async def display_player_embed(self, player, track, ctx, autoplay=False):
         guild_id = player.guild.id if player and player.guild else 0
-        channel = getattr(ctx, "channel", None) or getattr(player, "channel", None)
-        if not channel:
-            return
-
         if guild_id and track:
             track_dict = {
                 "title": getattr(track, "title", ""),
@@ -1499,44 +1548,101 @@ class Music(commands.Cog):
             }
             await self.precompute_ai_suggestions(guild_id, track_dict)
 
-        try:
-            title = getattr(track, 'title', 'Unknown Track')
-            artist = getattr(track, 'author', 'Unknown Artist')
-            duration_sec = int(getattr(track, 'length', 0) // 1000)
-            elapsed_sec = int(getattr(player, 'position', 0) // 1000)
-            thumb_url = getattr(track, 'artwork', None)
+        if player and ctx:
+            player.ctx = ctx
+        await self._render_player_card(player, track, ctx, autoplay=autoplay)
 
-            uri = getattr(track, 'uri', '') or ''
-            if "spotify" in uri:
-                platform = "spotify"
-            elif "soundcloud" in uri:
-                platform = "soundcloud"
-            elif "jiosaavn" in uri:
-                platform = "jiosaavn"
-            elif "apple" in uri:
-                platform = "apple"
-            elif "music.youtube" in uri:
-                platform = "youtubemusic"
-            else:
-                platform = "youtube"
+    async def _render_player_card(self, player, track, ctx, autoplay=False):
+        guild_id = player.guild.id if player and player.guild else 0
+        channel = getattr(ctx, "channel", None) or getattr(player, "channel", None)
+        if not channel or not track:
+            return
 
-            card_file = await MusicCardGenerator.create_card_file(
-                title=title,
-                artist=artist,
-                elapsed_sec=elapsed_sec,
-                duration_sec=duration_sec,
-                thumbnail_url=thumb_url,
-                platform=platform
-            )
-            is_autoplay = getattr(player, "smart_autoplay", True) or autoplay
-            view = MusicControlView(player, ctx, track=track, autoplay=is_autoplay, has_card=True)
-            await channel.send(file=card_file, view=view)
-        except Exception as e:
-            print(f"[Music UI] Card file error: {e}")
-            is_autoplay = getattr(player, "smart_autoplay", True) or autoplay
-            view = MusicControlView(player, ctx, track=track, autoplay=is_autoplay, has_card=False)
-            await channel.send(view=view)
+        lock = self._player_card_locks.setdefault(guild_id, asyncio.Lock())
+        async with lock:
+            try:
+                title = getattr(track, 'title', 'Unknown Track')
+                artist = getattr(track, 'author', 'Unknown Artist')
+                duration_sec = int(getattr(track, 'length', 0) // 1000)
+                elapsed_sec = int(getattr(player, 'position', 0) // 1000)
+                thumb_url = getattr(track, 'artwork', None)
 
+                uri = getattr(track, 'uri', '') or ''
+                if "spotify" in uri:
+                    platform = "spotify"
+                elif "soundcloud" in uri:
+                    platform = "soundcloud"
+                elif "jiosaavn" in uri:
+                    platform = "jiosaavn"
+                elif "apple" in uri:
+                    platform = "apple"
+                elif "music.youtube" in uri:
+                    platform = "youtubemusic"
+                else:
+                    platform = "youtube"
+
+                async with self._card_render_semaphore:
+                    card_file = await MusicCardGenerator.create_card_file(
+                        title=title,
+                        artist=artist,
+                        elapsed_sec=elapsed_sec,
+                        duration_sec=duration_sec,
+                        thumbnail_url=thumb_url,
+                        platform=platform,
+                        theme=self._get_music_card_theme(guild_id, track),
+                    )
+                card_bytes = card_file.fp.getvalue()
+                is_autoplay = getattr(player, "smart_autoplay", True) or autoplay
+                view = MusicControlView(
+                    player,
+                    ctx,
+                    track=track,
+                    autoplay=is_autoplay,
+                    has_card=True,
+                    card_filename=card_file.filename,
+                )
+
+                message = self._player_messages.get(guild_id)
+                if message:
+                    try:
+                        message = await message.edit(attachments=[card_file], view=view)
+                    except Exception as error:
+                        print(f"[Music UI] Could not edit player card in guild {guild_id}: {error}")
+                        self._player_messages.pop(guild_id, None)
+                        replacement = discord.File(
+                            fp=io.BytesIO(card_bytes),
+                            filename=card_file.filename,
+                        )
+                        message = await channel.send(file=replacement, view=view)
+                else:
+                    message = await channel.send(file=card_file, view=view)
+
+                self._player_messages[guild_id] = message
+            except Exception as error:
+                print(f"[Music UI] Card render error in guild {guild_id}: {error}")
+                is_autoplay = getattr(player, "smart_autoplay", True) or autoplay
+                fallback_view = MusicControlView(
+                    player,
+                    ctx,
+                    track=track,
+                    autoplay=is_autoplay,
+                    has_card=False,
+                )
+                message = self._player_messages.get(guild_id)
+                if message:
+                    try:
+                        self._player_messages[guild_id] = await message.edit(
+                            attachments=[],
+                            view=fallback_view,
+                        )
+                        return
+                    except Exception as edit_error:
+                        print(f"[Music UI] Could not edit fallback player view in guild {guild_id}: {edit_error}")
+                        self._player_messages.pop(guild_id, None)
+                try:
+                    self._player_messages[guild_id] = await channel.send(view=fallback_view)
+                except Exception as send_error:
+                    print(f"[Music UI] Could not send fallback player view in guild {guild_id}: {send_error}")
 
     async def on_track_end(self, payload: wavelink.TrackEndEventPayload):
         player = payload.player
@@ -1868,42 +1974,9 @@ class Music(commands.Cog):
 
         track = vc.current
         try:
-            title = getattr(track, 'title', 'Unknown Track')
-            artist = getattr(track, 'author', 'Unknown Artist')
-            duration_sec = int(getattr(track, 'length', 0) // 1000)
-            elapsed_sec = int(getattr(vc, 'position', 0) // 1000)
-            thumb_url = getattr(track, 'artwork', None)
-
-            uri = getattr(track, 'uri', '') or ''
-            if "spotify" in uri:
-                platform = "spotify"
-            elif "soundcloud" in uri:
-                platform = "soundcloud"
-            elif "jiosaavn" in uri:
-                platform = "jiosaavn"
-            elif "apple" in uri:
-                platform = "apple"
-            elif "music.youtube" in uri:
-                platform = "youtubemusic"
-            else:
-                platform = "youtube"
-
-            card_file = await MusicCardGenerator.create_card_file(
-                title=title,
-                artist=artist,
-                elapsed_sec=elapsed_sec,
-                duration_sec=duration_sec,
-                thumbnail_url=thumb_url,
-                platform=platform
-            )
-            is_autoplay = getattr(vc, "smart_autoplay", True)
-            view = MusicControlView(vc, ctx, track=track, autoplay=is_autoplay, has_card=True)
-            await ctx.send(file=card_file, view=view)
-        except Exception as e:
-            print(f"[Music] nowplaying card error: {e}")
-            is_autoplay = getattr(vc, "smart_autoplay", True)
-            view = MusicControlView(vc, ctx, track=track, autoplay=is_autoplay, has_card=False)
-            await ctx.send(view=view)
+            await self.display_player_embed(vc, track, ctx)
+        except Exception as error:
+            print(f"[Music] nowplaying card refresh failed: {error}")
 
     @commands.command(name="autoplay", usage="autoplay", help="Toggles autoplay mode.")
     @blacklist_check()
@@ -2351,12 +2424,124 @@ class Music(commands.Cog):
         guild_id = player.guild.id
         exception = payload.exception or {}
         detail = str(exception.get("message") or exception.get("cause") or "Playback failed")
-        track_title = str(getattr(payload.track, "title", "this track"))
+        failed_track = payload.track
+        track_title = str(getattr(failed_track, "title", "this track"))
+        failed_id = str(getattr(failed_track, "identifier", ""))
+        current_track = getattr(player, "current", None)
+        if current_track is not None and failed_track is not None and current_track != failed_track:
+            return
+        if guild_id in self._track_fallback_pending:
+            return
+
+        fallback_key = failed_id or (
+            f"{track_title.casefold()}:{str(getattr(failed_track, 'author', '') or '').casefold()}"
+        )
+        now = asyncio.get_running_loop().time()
+        attempt_key = (guild_id, fallback_key)
+        last_attempt = self._track_fallback_last_attempt.get(attempt_key)
+        if last_attempt is not None and now - last_attempt < 30:
+            return
+        self._track_fallback_last_attempt[attempt_key] = now
+        expired_attempts = [
+            key for key, attempted_at in self._track_fallback_last_attempt.items()
+            if now - attempted_at >= 30
+        ]
+        for key in expired_attempts:
+            self._track_fallback_last_attempt.pop(key, None)
+        while len(self._track_fallback_last_attempt) > 512:
+            oldest_key = min(self._track_fallback_last_attempt, key=self._track_fallback_last_attempt.get)
+            self._track_fallback_last_attempt.pop(oldest_key, None)
+
+        if failed_id:
+            suppressed = self._track_fallback_suppress_end.setdefault(guild_id, set())
+            suppressed.add(failed_id)
+            if len(suppressed) > 10:
+                suppressed.pop()
+
+        # A source failure (commonly a YouTube sign-in / bot challenge) should
+        # try the same song through direct providers before ending the queue.
+        if guild_id not in self._track_fallback_pending:
+            self._track_fallback_pending.add(guild_id)
+            tried = self._track_fallback_tried.setdefault(guild_id, set())
+            if failed_track is not None:
+                failed_id = str(getattr(failed_track, "identifier", ""))
+                if failed_id:
+                    tried.add(failed_id)
+
+            artist = str(getattr(failed_track, "author", "") or "").strip()
+            query = f"{artist} - {track_title}" if artist else track_title
+            alternate = None
+            alternate_source = ""
+            for prefix, source_name in (
+                ("jssearch:", "JioSaavn"),
+                ("dzsearch:", "Deezer"),
+            ):
+                try:
+                    results = await wavelink.Playable.search(f"{prefix}{query}")
+                    candidates = results.tracks if isinstance(results, wavelink.Playlist) else results
+                    for candidate in candidates:
+                        candidate_id = str(getattr(candidate, "identifier", ""))
+                        if candidate_id and candidate_id not in tried:
+                            alternate = candidate
+                            alternate_source = source_name
+                            break
+                    if alternate:
+                        break
+                except Exception as error:
+                    print(f"[Music] {source_name} fallback search failed: {error}")
+
+            if alternate is not None:
+                playback_started = False
+                try:
+                    if player.current is None or player.current == failed_track:
+                        tried.add(str(getattr(alternate, "identifier", "")))
+                        await player.play(alternate)
+                        playback_started = True
+                except Exception as error:
+                    print(f"[Music] Could not start fallback playback in guild {guild_id}: {error}")
+                if playback_started:
+                    ctx = getattr(player, "ctx", None)
+                    if ctx:
+                        try:
+                            await self.display_player_embed(player, alternate, ctx)
+                        except Exception as error:
+                            print(f"[Music] Fallback player display update failed: {error}")
+                    channel = getattr(ctx, "channel", None)
+                    if channel:
+                        try:
+                            await channel.send(view=CV2(
+                                f"YouTube couldn't play **{track_title[:120]}**, so I switched to {alternate_source}."
+                            ))
+                        except (discord.Forbidden, discord.HTTPException):
+                            pass
+                    print(f"[Music] Fallback playback started via {alternate_source} in guild {guild_id}")
+                    self._track_fallback_pending.discard(guild_id)
+                    return
+                if player.current is not None and player.current != failed_track:
+                    self._track_fallback_pending.discard(guild_id)
+                    return
+
+            # The LOAD_FAILED event is ignored while fallback is being searched,
+            # so advance the explicit queue ourselves if no source can play it.
+            try:
+                if not player.queue.is_empty:
+                    next_track = await player.queue.get_wait()
+                    await player.play(next_track)
+                    ctx = getattr(player, "ctx", None)
+                    if ctx:
+                        await self.display_player_embed(player, next_track, ctx)
+                    return
+                if not self.is_247_enabled(guild_id):
+                    await player.disconnect()
+            except Exception as error:
+                print(f"[Music] Could not advance after source fallback in guild {guild_id}: {error}")
+            finally:
+                self._track_fallback_pending.discard(guild_id)
 
         if "login" in detail.lower() or "sign in" in detail.lower():
-            notice = f"I couldn't play **{track_title[:150]}** because YouTube requires sign-in for that video. Try another track."
+            notice = f"I couldn't play **{track_title[:150]}** because YouTube requires sign-in for that video, and no alternate source was available."
         else:
-            notice = f"I couldn't load **{track_title[:150]}** from the audio source. Try another track."
+            notice = f"I couldn't play **{track_title[:150]}** from the available audio sources. Try another track."
 
         now = asyncio.get_running_loop().time()
         if now - self._track_error_notice_at.get(guild_id, 0.0) < 60:
@@ -2379,6 +2564,13 @@ class Music(commands.Cog):
             return
 
         guild_id = player.guild.id
+        track_id = str(getattr(payload.track, "identifier", ""))
+        suppressed = self._track_fallback_suppress_end.get(guild_id, set())
+        if track_id and track_id in suppressed:
+            suppressed.discard(track_id)
+            return
+        if guild_id in self._track_fallback_pending:
+            return
         voice_channel = player.channel
 
         if voice_channel:

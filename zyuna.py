@@ -2,6 +2,10 @@
 
 import sys
 import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 # os.system("")
 import asyncio
 import traceback
@@ -38,6 +42,127 @@ for _p in [
     if _p and os.path.exists(_p) and _p not in sys.path:
         sys.path.insert(0, _p)
 
+_GIT_REPOSITORY_URL = "https://github.com/nithishkumar717/zyuna.git"
+_GIT_BRANCH = "main"
+_PROJECT_MODULE_ROOTS = {"core", "cogs", "utils", "git_update"}
+
+
+def _bootstrap_git(*args, cwd):
+    """Run a quiet, non-interactive Git command for missing-module recovery."""
+    env = os.environ.copy()
+    env.update({"GIT_TERMINAL_PROMPT": "0", "GIT_PAGER": "cat"})
+    result = subprocess.run(
+        ["git", *args],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        timeout=120,
+        env=env,
+    )
+    if result.returncode:
+        detail = result.stderr.strip() or result.stdout.strip() or f"git {' '.join(args)} failed"
+        raise RuntimeError(detail)
+    return result.stdout.strip()
+
+
+def _find_checkout_root():
+    script_dir = Path(_script_dir).resolve()
+    for candidate in (script_dir, *script_dir.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _is_runtime_data_path(relative_path):
+    path = Path(relative_path)
+    protected_directories = {".git", ".venv", "venv", "db", "data", "logs", "__pycache__"}
+    if any(part in protected_directories for part in path.parts):
+        return True
+    if path.as_posix() == ".env":
+        return True
+    return path.suffix.lower() in {".db", ".sqlite", ".sqlite3", ".log"}
+
+
+def _recover_missing_project_module(module_name):
+    """Restore missing internal Python files from this checkout or public GitHub."""
+    top_level = (module_name or "").split(".", 1)[0]
+    if top_level not in _PROJECT_MODULE_ROOTS:
+        return []
+
+    project_root = Path(_script_dir).resolve()
+    checkout_root = _find_checkout_root()
+    restored = []
+
+    if checkout_root is not None:
+        try:
+            tracked_paths = _bootstrap_git("ls-tree", "-r", "--name-only", "HEAD", cwd=checkout_root).splitlines()
+            if top_level == "git_update":
+                candidate_paths = [path for path in tracked_paths if path == "git_update.py"]
+            else:
+                prefix = f"{top_level}/"
+                candidate_paths = [
+                    path for path in tracked_paths
+                    if path.startswith(prefix) and path.endswith(".py")
+                ]
+
+            missing_paths = [
+                path for path in candidate_paths
+                if not (checkout_root / Path(path)).is_file()
+            ]
+            if not missing_paths:
+                return []
+
+            _bootstrap_git(
+                "restore", "--source=HEAD", "--staged", "--worktree", "--", *missing_paths,
+                cwd=checkout_root,
+            )
+            return [str(checkout_root / Path(path)) for path in missing_paths]
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+            print(f"\033[33m◈ Git recovery could not restore '{module_name}': {error}\033[0m")
+            return []
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="zyuna-git-recovery-") as temporary_dir:
+            clone_root = Path(temporary_dir) / "checkout"
+            _bootstrap_git(
+                "clone", "--quiet", "--depth", "1", "--branch", _GIT_BRANCH,
+                _GIT_REPOSITORY_URL, str(clone_root),
+                cwd=temporary_dir,
+            )
+            candidate_paths = _bootstrap_git(
+                "ls-tree", "-r", "--name-only", "HEAD", cwd=clone_root
+            ).splitlines()
+            for relative_path in candidate_paths:
+                if _is_runtime_data_path(relative_path):
+                    continue
+                source = clone_root / Path(relative_path)
+                destination = project_root / Path(relative_path)
+                if not source.is_file():
+                    continue
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+                restored.append(str(destination))
+    except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+        print(f"\033[33m◈ Git recovery could not restore '{module_name}': {error}\033[0m")
+    return restored
+
+
+def _restart_after_module_recovery(module_name):
+    attempts = int(os.environ.get("ZYUNA_IMPORT_RECOVERY_ATTEMPTS", "0"))
+    if attempts >= 3:
+        print(f"✖ [Startup] Recovery limit reached; '{module_name}' is still missing.")
+        return
+
+    restored = _recover_missing_project_module(module_name)
+    if not restored:
+        return
+
+    print(f"\033[32m◈ [Startup] Restored {len(restored)} missing project file(s) from Git.\033[0m")
+    print("\033[33m◈ [Startup] Restarting Zyuna to load the recovered code...\033[0m")
+    os.environ["ZYUNA_IMPORT_RECOVERY_ATTEMPTS"] = str(attempts + 1)
+    os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0]), *sys.argv[1:]])
+
 def _auto_git_pull():
     """Safely fast-forward this checkout at startup, then restart if code changed."""
     try:
@@ -52,6 +177,10 @@ def _auto_git_pull():
             os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0]), *sys.argv[1:]])
         else:
             print(f"\033[36m◈ Auto-Update: {result.message}\033[0m")
+    except ModuleNotFoundError as e:
+        if e.name:
+            _restart_after_module_recovery(e.name)
+        print(f"\033[33m◈ Auto-Update note: {e}\033[0m")
     except Exception as e:
         print(f"\033[33m◈ Auto-Update note: {e}\033[0m")
 
@@ -61,6 +190,9 @@ _auto_git_pull()
 try:
     from utils.time_utils import setup_ist_logging, now_ist, format_ist_full, format_ist_datetime
     setup_ist_logging()
+except ModuleNotFoundError as error:
+    if error.name:
+        _restart_after_module_recovery(error.name)
 except Exception:
     pass
 
@@ -107,15 +239,22 @@ from discord.ext import commands, tasks
 
 # (Auto-update moved to top of file)
 
-from core import Context, zyuna
-from core.Cog import Cog
-from utils.Tools import *
-from utils.config import *
-from utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
-from utils.sync_emojis import run_sync
+try:
+    from core import Context, zyuna
+    from core.Cog import Cog
+    from utils.Tools import *
+    from utils.config import *
+    from utils.emoji import SUCCESS, ERROR, TICK, CROSS, REACTION_TEST_EMOJIS
+    from utils.sync_emojis import run_sync
 
-import jishaku
-import cogs
+    import jishaku
+    import cogs
+except ModuleNotFoundError as error:
+    if error.name:
+        _restart_after_module_recovery(error.name)
+    raise
+
+os.environ.pop("ZYUNA_IMPORT_RECOVERY_ATTEMPTS", None)
 
 
 os.environ["JISHAKU_NO_DM_TRACEBACK"] = "False"
