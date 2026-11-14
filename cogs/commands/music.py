@@ -799,6 +799,7 @@ class Music(commands.Cog):
         self._card_theme_counts: Dict[int, int] = {}
         self._active_card_themes: Dict[int, tuple[str, str]] = {}
         self._player_messages: Dict[int, discord.Message] = {}
+        self._player_message_track_keys: Dict[int, str] = {}
         self._player_card_locks: Dict[int, asyncio.Lock] = {}
         self._card_render_semaphore = asyncio.Semaphore(1)
         self._track_fallback_pending: set[int] = set()
@@ -1519,12 +1520,15 @@ class Music(commands.Cog):
         asyncio.create_task(self.restore_music_sessions())
 
 
-    def _get_music_card_theme(self, guild_id: int, track) -> str:
-        track_key = str(
+    def _get_music_card_track_key(self, track) -> str:
+        return str(
             getattr(track, "identifier", "")
             or getattr(track, "uri", "")
             or f"{getattr(track, 'title', '')}:{getattr(track, 'author', '')}"
         )
+
+    def _get_music_card_theme(self, guild_id: int, track) -> str:
+        track_key = self._get_music_card_track_key(track)
         active = self._active_card_themes.get(guild_id)
         if active and active[0] == track_key:
             return active[1]
@@ -1534,6 +1538,25 @@ class Music(commands.Cog):
         self._card_theme_counts[guild_id] = count + 1
         self._active_card_themes[guild_id] = (track_key, theme)
         return theme
+
+    async def _send_player_message(self, guild_id, channel, track_key, old_message, view, card_file=None):
+        if card_file is None:
+            message = await channel.send(view=view)
+        else:
+            message = await channel.send(file=card_file, view=view)
+
+        self._player_messages[guild_id] = message
+        self._player_message_track_keys[guild_id] = track_key
+
+        if old_message and old_message.id != message.id:
+            try:
+                await old_message.delete()
+            except discord.NotFound:
+                pass
+            except (discord.Forbidden, discord.HTTPException) as error:
+                print(f"[Music UI] Could not delete the previous player card in guild {guild_id}: {error}")
+
+        return message
 
     async def display_player_embed(self, player, track, ctx, autoplay=False):
         guild_id = player.guild.id if player and player.guild else 0
@@ -1558,6 +1581,7 @@ class Music(commands.Cog):
         if not channel or not track:
             return
 
+        track_key = self._get_music_card_track_key(track)
         lock = self._player_card_locks.setdefault(guild_id, asyncio.Lock())
         async with lock:
             try:
@@ -1602,22 +1626,28 @@ class Music(commands.Cog):
                     card_filename=card_file.filename,
                 )
 
-                message = self._player_messages.get(guild_id)
-                if message:
+                old_message = self._player_messages.get(guild_id)
+                same_track = (
+                    old_message is not None
+                    and self._player_message_track_keys.get(guild_id) == track_key
+                )
+                if same_track:
                     try:
-                        message = await message.edit(attachments=[card_file], view=view)
+                        message = await old_message.edit(attachments=[card_file], view=view)
+                        self._player_messages[guild_id] = message
                     except Exception as error:
                         print(f"[Music UI] Could not edit player card in guild {guild_id}: {error}")
-                        self._player_messages.pop(guild_id, None)
                         replacement = discord.File(
                             fp=io.BytesIO(card_bytes),
                             filename=card_file.filename,
                         )
-                        message = await channel.send(file=replacement, view=view)
+                        await self._send_player_message(
+                            guild_id, channel, track_key, old_message, view, replacement
+                        )
                 else:
-                    message = await channel.send(file=card_file, view=view)
-
-                self._player_messages[guild_id] = message
+                    await self._send_player_message(
+                        guild_id, channel, track_key, old_message, view, card_file
+                    )
             except Exception as error:
                 print(f"[Music UI] Card render error in guild {guild_id}: {error}")
                 is_autoplay = getattr(player, "smart_autoplay", True) or autoplay
@@ -1628,19 +1658,24 @@ class Music(commands.Cog):
                     autoplay=is_autoplay,
                     has_card=False,
                 )
-                message = self._player_messages.get(guild_id)
-                if message:
+                old_message = self._player_messages.get(guild_id)
+                same_track = (
+                    old_message is not None
+                    and self._player_message_track_keys.get(guild_id) == track_key
+                )
+                if same_track:
                     try:
-                        self._player_messages[guild_id] = await message.edit(
+                        self._player_messages[guild_id] = await old_message.edit(
                             attachments=[],
                             view=fallback_view,
                         )
                         return
                     except Exception as edit_error:
                         print(f"[Music UI] Could not edit fallback player view in guild {guild_id}: {edit_error}")
-                        self._player_messages.pop(guild_id, None)
                 try:
-                    self._player_messages[guild_id] = await channel.send(view=fallback_view)
+                    await self._send_player_message(
+                        guild_id, channel, track_key, old_message, fallback_view
+                    )
                 except Exception as send_error:
                     print(f"[Music UI] Could not send fallback player view in guild {guild_id}: {send_error}")
 
