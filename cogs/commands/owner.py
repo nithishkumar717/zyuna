@@ -314,7 +314,7 @@ class Owner(commands.Cog):
             await ctx.send("Forbidden.")
 
 
-    @commands.command(name="reload", help="Restarts the client.")
+    @commands.command(name="reload", aliases=["restart"], help="Restarts the client.")
     @commands.is_owner()
     async def _restart(self, ctx: Context):
         await ctx.reply(f"{TICK} | **Successfully Restarting {BotName} It Takes 10 seconds**")

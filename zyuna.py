@@ -186,6 +186,23 @@ def _auto_git_pull():
 
 _auto_git_pull()
 
+# Load the project .env before importing config modules, then normalize common
+# panel variable names to TOKEN so every module sees the same value.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(dotenv_path=Path(_script_dir) / ".env")
+except ImportError:
+    pass
+
+for _token_variable in ("TOKEN", "DISCORD_TOKEN", "BOT_TOKEN", "DISCORD_BOT_TOKEN"):
+    _token_value = os.getenv(_token_variable, "").strip()
+    if _token_value:
+        os.environ["TOKEN"] = _token_value
+        break
+
+TOKEN = os.getenv("TOKEN", "").strip()
+
 # Initialize global IST timezone logging for console prints & standard library logging.
 try:
     from utils.time_utils import setup_ist_logging, now_ist, format_ist_full, format_ist_datetime
@@ -256,15 +273,16 @@ except ModuleNotFoundError as error:
 
 os.environ.pop("ZYUNA_IMPORT_RECOVERY_ATTEMPTS", None)
 
+if not TOKEN:
+    raise SystemExit(
+        "Missing Discord bot token. Set TOKEN in the VPS environment or in the project-root .env file."
+    )
+
 
 os.environ["JISHAKU_NO_DM_TRACEBACK"] = "False"
 os.environ["JISHAKU_HIDE"] = "True"
 os.environ["JISHAKU_NO_UNDERSCORE"] = "True"
 os.environ["JISHAKU_FORCE_PAGINATOR"] = "True"
-
-from dotenv import load_dotenv
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
 
 # --- Configuration ---
 # IMPORTANT: Replace these with your actual channel IDs.
