@@ -93,7 +93,7 @@ module.exports = {
         }
 
         await interaction.deferReply();
-        const query = interaction.options.getString('search');
+        let query = interaction.options.getString('search');
 
         const queryValidation = validatePlayQuery(query);
         if (!queryValidation.valid) {
@@ -106,6 +106,7 @@ module.exports = {
                 flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2
             });
         }
+        query = queryValidation.cleanQuery;
 
         let res;
         try {
@@ -123,7 +124,7 @@ module.exports = {
             });
         }
 
-        const isSpotifyPlaylist = /^https?:\/\/open\.spotify\.com\/playlist\/[a-zA-Z0-9]+/i.test(query.trim());
+        const isSpotifyPlaylist = queryValidation.isSpotifyPlaylist;
         if (isSpotifyPlaylist) {
             if (!res || (res.loadType !== 'PLAYLIST_LOADED' && res.loadType !== 'playlist') || !Array.isArray(res.tracks) || res.tracks.length === 0) {
                 const container = new ContainerBuilder()

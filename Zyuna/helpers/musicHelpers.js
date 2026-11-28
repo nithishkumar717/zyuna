@@ -51,28 +51,31 @@ function hasControlPermission(interactionOrMessage, player) {
 }
 
 const UNSUPPORTED_URL_MESSAGE =
-    'Currently we only support direct search, Spotify playlist URLs, JioSaavn URLs, or Yuna Music Archive URLs.';
+    'Currently we only support direct search, Spotify URLs (playlists, tracks, albums), JioSaavn URLs, or Yuna Music Archive URLs.';
 
 /**
- * Validates whether a play query is a direct text search, a Spotify playlist URL,
- * a JioSaavn URL, or a musictrack.yunabot.xyz URL. Rejects all other URLs.
+ * Validates whether a play query is a direct text search, a Spotify URL (playlist, track, album),
+ * a JioSaavn URL, or a musictrack.yunabot.xyz URL. Rejects unauthorized external URLs.
  * @param {string} query
- * @returns {{ valid: boolean, isUrl: boolean, isSpotifyPlaylist: boolean, isJioSaavn: boolean, isMusicTrack: boolean, message?: string }}
+ * @returns {{ valid: boolean, isUrl: boolean, isSpotify: boolean, isSpotifyPlaylist: boolean, isJioSaavn: boolean, isMusicTrack: boolean, cleanQuery: string, message?: string }}
  */
 function validatePlayQuery(query) {
-    const trimmed = (query || '').trim();
+    const trimmed = (query || '').trim().replace(/^<|>$/g, '');
     const isUrl = /^https?:\/\//i.test(trimmed);
-    const isSpotifyPlaylist = /^https?:\/\/open\.spotify\.com\/playlist\/[a-zA-Z0-9]+/i.test(trimmed);
+    const isSpotify = /^(?:https?:\/\/(?:open\.)?spotify\.com\/(?:intl-[a-z]{2}\/)?(?:playlist|track|album|artist)\/[a-zA-Z0-9]+|https?:\/\/spotify\.link\/[a-zA-Z0-9]+|spotify:(?:playlist|track|album|artist):[a-zA-Z0-9]+)/i.test(trimmed);
+    const isSpotifyPlaylist = /^(?:https?:\/\/(?:open\.)?spotify\.com\/(?:intl-[a-z]{2}\/)?(?:playlist|album)\/[a-zA-Z0-9]+|spotify:(?:playlist|album):[a-zA-Z0-9]+)/i.test(trimmed);
     const isJioSaavn = /^https?:\/\/(?:www\.)?jiosaavn\.com\//i.test(trimmed);
     const isMusicTrack = isMusicTrackUrl(trimmed);
 
-    if (isUrl && !isSpotifyPlaylist && !isJioSaavn && !isMusicTrack) {
+    if (isUrl && !isSpotify && !isJioSaavn && !isMusicTrack) {
         return {
             valid: false,
             isUrl: true,
+            isSpotify: false,
             isSpotifyPlaylist: false,
             isJioSaavn: false,
             isMusicTrack: false,
+            cleanQuery: trimmed,
             message: UNSUPPORTED_URL_MESSAGE,
         };
     }
@@ -80,9 +83,11 @@ function validatePlayQuery(query) {
     return {
         valid: true,
         isUrl,
+        isSpotify,
         isSpotifyPlaylist,
         isJioSaavn,
         isMusicTrack,
+        cleanQuery: trimmed,
     };
 }
 
