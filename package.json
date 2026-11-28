@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "Zyuna/index.js",
   "scripts": {
-    "start": "node Zyuna/index.js"
+    "start": "node index.js"
   },
   "keywords": [
     "discord",

@@ -183,19 +183,22 @@ printSuccess('Database initialized');
 
 
 const nodes = [];
-const hosts = config.LAVALINK.HOSTS.split(',');
-const ports = config.LAVALINK.PORTS.split(',');
-const passwords = config.LAVALINK.PASSWORDS.split(',');
-const secures = config.LAVALINK.SECURES.split(',');
+if (config.LAVALINK.HOSTS && config.LAVALINK.HOSTS.trim().length > 0) {
+    const hosts = config.LAVALINK.HOSTS.split(',');
+    const ports = (config.LAVALINK.PORTS || '24622').split(',');
+    const passwords = (config.LAVALINK.PASSWORDS || 'nerdxlive').split(',');
+    const secures = (config.LAVALINK.SECURES || 'false').split(',');
 
-for (let i = 0; i < hosts.length; i++) {
-    nodes.push({
-        name: `Node-${i + 1}`,
-        host: hosts[i].trim(),
-        port: parseInt(ports[i].trim()),
-        password: passwords[i].trim(),
-        secure: secures[i].trim() === 'true'
-    });
+    for (let i = 0; i < hosts.length; i++) {
+        if (!hosts[i] || !hosts[i].trim()) continue;
+        nodes.push({
+            name: `Node-${i + 1}`,
+            host: hosts[i].trim(),
+            port: parseInt(ports[i] ? ports[i].trim() : '24622') || 24622,
+            password: passwords[i] ? passwords[i].trim() : 'nerdxlive',
+            secure: secures[i] ? secures[i].trim() === 'true' : false
+        });
+    }
 }
 
 printLoading('Music system (LavaLink)');
