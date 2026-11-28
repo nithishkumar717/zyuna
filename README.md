@@ -145,7 +145,7 @@ Contributions are welcome. To contribute:
 
 - Author: `Nithish (Nerdxlive)`
 - GitHub: https://github.com/nithishkumar717/zyuna
-- Support Server: https://discord.gg/YzHCx5yQXv
+- Support Server: https://discord.gg/wn4yDS8Bj
 ## License
 
 This project is licensed under the ISC License.

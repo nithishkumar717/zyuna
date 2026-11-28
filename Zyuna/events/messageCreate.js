@@ -25,7 +25,7 @@ module.exports = {
     
     container.addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
-        `# ${emojis.brand} Hey there!\n\n${emojis.dots} I'm **${client.user.username}** - Your music companion\n${emojis.dots} Use \`/help\` to explore all my commands\n${emojis.dots} Need support? Join our [server](https://discord.gg/8wfT8SfB5Z)`
+        `# ${emojis.brand} Hey there!\n\n${emojis.dots} I'm **${client.user.username}** - Your music companion\n${emojis.dots} Use \`/help\` to explore all my commands\n${emojis.dots} Need support? Join our [server](https://discord.gg/wn4yDS8Bj)`
       )
     );
     
