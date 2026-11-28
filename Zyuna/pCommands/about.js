@@ -11,6 +11,7 @@ const {
   SeparatorSpacingSize
 } = require("discord.js");
 const emojis = require('../emojis.json');
+const { getSupportServerUrl } = require('../utils/supportLink');
 
 module.exports = {
   name: 'about',
@@ -80,6 +81,8 @@ module.exports = {
       new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
     );
 
+    const supportUrl = await getSupportServerUrl(client);
+
     container.addActionRowComponents(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -88,7 +91,7 @@ module.exports = {
           .setStyle(ButtonStyle.Link),
 
         new ButtonBuilder()
-          .setURL(`https://discord.gg/wn4yDS8Bj`)
+          .setURL(supportUrl)
           .setLabel(`Zyuna Development`)
           .setStyle(ButtonStyle.Link)
       )

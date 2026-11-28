@@ -10,6 +10,7 @@ const {
   SeparatorSpacingSize,
 } = require("discord.js");
 const emojis = require('../emojis.json');
+const { getSupportServerUrl } = require('../utils/supportLink');
 
 module.exports = {
   name: Events.MessageCreate,
@@ -21,11 +22,12 @@ module.exports = {
     if (!message.mentions.users.has(client.user.id)) return;
     if (message.type === 19) return; 
     
+    const supportUrl = await getSupportServerUrl(client);
     const container = new ContainerBuilder();
     
     container.addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
-        `# ${emojis.brand} Hey there!\n\n${emojis.dots} I'm **${client.user.username}** - Your music companion\n${emojis.dots} Use \`/help\` to explore all my commands\n${emojis.dots} Need support? Join our [server](https://discord.gg/wn4yDS8Bj)`
+        `# ${emojis.brand} Hey there!\n\n${emojis.dots} I'm **${client.user.username}** - Your music companion\n${emojis.dots} Use \`/help\` to explore all my commands\n${emojis.dots} Need support? Join our [server](${supportUrl})`
       )
     );
     

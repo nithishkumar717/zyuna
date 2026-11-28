@@ -2,6 +2,8 @@ module.exports = {
     BOT_TOKEN: process.env.BOT_TOKEN || '',
     CLIENT_ID: process.env.CLIENT_ID || '',
     OWNER_ID: process.env.OWNER_ID || '',
+    SUPPORT_SERVER_ID: process.env.SUPPORT_SERVER_ID || '1525481611116806185',
+    SUPPORT_INVITE_URL: process.env.SUPPORT_INVITE_URL || 'https://discord.gg/wn4yDS8Bj',
     PREFIX: ',',
 
 

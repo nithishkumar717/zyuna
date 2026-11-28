@@ -9,6 +9,7 @@ const { setupMusicEvents } = require('./music/events');
 const config = require('./config');
 const { syncApplicationEmojis } = require('./utils/emojiSync');
 const { runStartupAutoPull, startGitWatchdog, stopGitWatchdog } = require('./utils/gitUpdate');
+const { getSupportServerUrl } = require('./utils/supportLink');
 
 runStartupAutoPull();
 
@@ -281,6 +282,7 @@ client.once('clientReady', async () => {
     }
 
     printInfo(`Connected to ${client.guilds.cache.size} guilds`);
+    getSupportServerUrl(client).catch(() => {});
     startGitWatchdog(client);
     printSystemReady();
 });
