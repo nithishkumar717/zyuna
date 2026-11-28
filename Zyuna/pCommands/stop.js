@@ -1,5 +1,6 @@
 const { ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
 const { hasControlPermission } = require('../helpers/musicHelpers');
+const TwentyFourSeven = require('../../database/models/TwentyFourSeven');
 const emojis = require('../emojis.json');
 
 module.exports = {
@@ -35,11 +36,20 @@ module.exports = {
             return message.reply({ components: [container], flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2 });
         }
 
+        const setting247 = await TwentyFourSeven.getGuild247(guild.id);
         player.queue.clear();
-        player.destroy();
+        if (setting247.enabled) {
+            player.stop();
+        } else {
+            player.destroy();
+        }
         
         const container = new ContainerBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${emojis.stop} Stopped music and cleared the queue.`));
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                setting247.enabled
+                    ? `${emojis.stop} Stopped music and cleared the queue (staying in VC due to 24/7 mode).`
+                    : `${emojis.stop} Stopped music and cleared the queue.`
+            ));
         
         return message.reply({ components: [container], flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2 });
     },

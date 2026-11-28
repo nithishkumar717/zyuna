@@ -293,6 +293,38 @@ client.once('clientReady', async () => {
             )
         ]);
         printSuccess(`LavaLink node connected: ${node.name}`);
+
+        // Restore 24/7 voice channel connections after Lavalink is ready
+        try {
+            const TwentyFourSeven = require('../database/models/TwentyFourSeven');
+            const AutoplaySetting = require('../database/models/AutoplaySetting');
+            const entries = await TwentyFourSeven.getAllEnabled();
+            let restored247 = 0;
+            for (const entry of entries) {
+                const guild = client.guilds.cache.get(entry.guildId);
+                if (!guild || client.poru.players.get(guild.id)) continue;
+                const vc = guild.channels.cache.get(entry.voiceChannelId);
+                if (!vc) continue;
+                try {
+                    const p = client.poru.createConnection({
+                        guildId: guild.id,
+                        voiceChannel: vc.id,
+                        textChannel: entry.textChannelId || vc.id,
+                        deaf: true,
+                    });
+                    const ap = await AutoplaySetting.getGuildSetting(guild.id);
+                    p.autoplayEnabled = ap.enabled;
+                    p.autoplayLanguage = ap.language;
+                    p._autoplayLoaded = true;
+                    restored247++;
+                } catch {}
+            }
+            if (restored247 > 0) {
+                printSuccess(`Restored ${restored247} 24/7 voice connection(s)`);
+            }
+        } catch (err247) {
+            printError(`24/7 restore error: ${err247.message}`);
+        }
     } catch (error) {
         printError(`LavaLink connection failed: ${error.message}`);
     }

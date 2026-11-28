@@ -4,6 +4,7 @@ const { MusicCard } = require('../helpers/MusicCard');
 const { normalizeTitle, resolveAutoplayTracks } = require('../helpers/autoplayEngine');
 const Favorite = require('../../database/models/Favorite');
 const AutoplaySetting = require('../../database/models/AutoplaySetting');
+const TwentyFourSeven = require('../../database/models/TwentyFourSeven');
 const config = require('../config');
 const emojis = require('../emojis.json');
 
@@ -248,10 +249,19 @@ function setupMusicEvents(client) {
                             break;
                         }
                         case 'music_stop': {
+                            const setting247 = await TwentyFourSeven.getGuild247(player.guildId);
                             player.queue.clear();
-                            player.destroy();
+                            if (setting247.enabled) {
+                                player.stop();
+                            } else {
+                                player.destroy();
+                            }
                             const container = new ContainerBuilder()
-                                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${emojis.stop} Stopped music and cleared the queue.`));
+                                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                                    setting247.enabled
+                                        ? `${emojis.stop} Stopped music and cleared the queue (staying in VC due to 24/7 mode).`
+                                        : `${emojis.stop} Stopped music and cleared the queue.`
+                                ));
                             await interaction.reply({ 
                                 components: [container], 
                                 flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2, 

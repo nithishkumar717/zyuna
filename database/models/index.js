@@ -6,6 +6,7 @@ const Playlist = require('./Playlist');
 const PlaylistTrack = require('./PlaylistTrack');
 const NoPrefix = require('./NoPrefix');
 const AutoplaySetting = require('./AutoplaySetting');
+const TwentyFourSeven = require('./TwentyFourSeven');
 
 
 const models = {
@@ -14,6 +15,7 @@ const models = {
     PlaylistTrack,
     NoPrefix,
     AutoplaySetting,
+    TwentyFourSeven,
     sequelize
 };
 

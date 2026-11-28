@@ -1,5 +1,6 @@
 const { ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
 const { hasControlPermission } = require('../helpers/musicHelpers');
+const TwentyFourSeven = require('../../database/models/TwentyFourSeven');
 const emojis = require('../emojis.json');
 
 module.exports = {
@@ -43,7 +44,9 @@ module.exports = {
             return message.reply({ components: [container], flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2 });
         }
 
+        await TwentyFourSeven.disable247(guild.id);
         if (player) {
+            player._manualDisconnect = true;
             player.destroy();
         } else if (voiceConnection) {
             voiceConnection.disconnect();
