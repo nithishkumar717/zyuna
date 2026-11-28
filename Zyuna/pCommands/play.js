@@ -1,6 +1,7 @@
 const { ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
-const { formatDuration } = require('../helpers/musicHelpers');
+const { formatDuration, validatePlayQuery } = require('../helpers/musicHelpers');
 const { hexToDecimal } = require('../helpers/colorHelper');
+const { resolveMusicQuery } = require('../helpers/musicTrackResolver');
 const config = require('../config');
 const emojis = require('../emojis.json');
 
@@ -35,6 +36,18 @@ module.exports = {
 
         const query = args.join(' ');
 
+        const queryValidation = validatePlayQuery(query);
+        if (!queryValidation.valid) {
+            const container = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`${emojis.error} ${queryValidation.message}`)
+                );
+            return message.reply({
+                components: [container],
+                flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2
+            });
+        }
+
         
 
         const searchContainer = new ContainerBuilder()
@@ -48,7 +61,7 @@ module.exports = {
 
         let res;
         try {
-            res = await client.poru.resolve({ query, requester: message.author });
+            res = await resolveMusicQuery(client, query, message.author);
         } catch (e) {
             console.error('Poru resolve error:', e);
             const errMsg = String(e?.message || 'Unknown error').slice(0, 1500);

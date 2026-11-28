@@ -1,4 +1,5 @@
 const { PermissionFlagsBits } = require('discord.js');
+const { isMusicTrackUrl } = require('./musicTrackResolver');
 
 function formatDuration(ms) {
     if (typeof ms !== 'number' || isNaN(ms) || ms < 0) return '0:00';
@@ -49,9 +50,47 @@ function hasControlPermission(interactionOrMessage, player) {
     return false;
 }
 
+const UNSUPPORTED_URL_MESSAGE =
+    'Currently we only support direct search, Spotify playlist URLs, JioSaavn URLs, or Yuna Music Archive URLs.';
+
+/**
+ * Validates whether a play query is a direct text search, a Spotify playlist URL,
+ * a JioSaavn URL, or a musictrack.yunabot.xyz URL. Rejects all other URLs.
+ * @param {string} query
+ * @returns {{ valid: boolean, isUrl: boolean, isSpotifyPlaylist: boolean, isJioSaavn: boolean, isMusicTrack: boolean, message?: string }}
+ */
+function validatePlayQuery(query) {
+    const trimmed = (query || '').trim();
+    const isUrl = /^https?:\/\//i.test(trimmed);
+    const isSpotifyPlaylist = /^https?:\/\/open\.spotify\.com\/playlist\/[a-zA-Z0-9]+/i.test(trimmed);
+    const isJioSaavn = /^https?:\/\/(?:www\.)?jiosaavn\.com\//i.test(trimmed);
+    const isMusicTrack = isMusicTrackUrl(trimmed);
+
+    if (isUrl && !isSpotifyPlaylist && !isJioSaavn && !isMusicTrack) {
+        return {
+            valid: false,
+            isUrl: true,
+            isSpotifyPlaylist: false,
+            isJioSaavn: false,
+            isMusicTrack: false,
+            message: UNSUPPORTED_URL_MESSAGE,
+        };
+    }
+
+    return {
+        valid: true,
+        isUrl,
+        isSpotifyPlaylist,
+        isJioSaavn,
+        isMusicTrack,
+    };
+}
+
 module.exports = {
     formatDuration,
     createProgressBar,
-    hasControlPermission
+    hasControlPermission,
+    validatePlayQuery,
+    UNSUPPORTED_URL_MESSAGE
 };
 

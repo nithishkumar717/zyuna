@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
-const { formatDuration } = require('../helpers/musicHelpers');
+const { formatDuration, validatePlayQuery } = require('../helpers/musicHelpers');
 const { hexToDecimal } = require('../helpers/colorHelper');
+const { isMusicTrackUrl, resolveMusicQuery } = require('../helpers/musicTrackResolver');
 const config = require('../config');
 const emojis = require('../emojis.json');
 
@@ -10,7 +11,7 @@ module.exports = {
         .setDescription('Play a song or add it to the queue')
         .addStringOption(option =>
             option.setName('search')
-                .setDescription('Song title or URL (YouTube, Spotify)')
+                .setDescription('Song title, Spotify playlist URL, or JioSaavn URL')
                 .setRequired(true)
                 .setAutocomplete(true)
         ),
@@ -19,22 +20,27 @@ module.exports = {
         const { client } = interaction;
         const focusedValue = interaction.options.getFocused();
 
-        if (focusedValue.toLowerCase().includes('spotify')) {
+        if (/^https?:\/\/open\.spotify\.com\/playlist\/[a-zA-Z0-9]+/i.test(focusedValue.trim())) {
             const truncatedUrl = focusedValue.length > 60 ? focusedValue.slice(0, 57) + '...' : focusedValue;
             return interaction.respond([{ 
-                name: `Play Spotify: ${truncatedUrl}`, 
+                name: `Play Spotify Playlist: ${truncatedUrl}`, 
                 value: focusedValue 
             }]);
-        } else if (focusedValue.toLowerCase().includes('youtube')) {
+        } else if (/^https?:\/\/(?:www\.)?jiosaavn\.com\//i.test(focusedValue.trim())) {
             const truncatedUrl = focusedValue.length > 60 ? focusedValue.slice(0, 57) + '...' : focusedValue;
             return interaction.respond([{ 
-                name: `Play Youtube: ${truncatedUrl}`, 
+                name: `Play JioSaavn: ${truncatedUrl}`, 
                 value: focusedValue 
             }]);
-        } else if (/^https?:\/\//.test(focusedValue)) {
-            const truncatedUrl = focusedValue.length > 70 ? focusedValue.slice(0, 67) + '...' : focusedValue;
+        } else if (isMusicTrackUrl(focusedValue.trim())) {
+            const truncatedUrl = focusedValue.length > 60 ? focusedValue.slice(0, 57) + '...' : focusedValue;
             return interaction.respond([{ 
-                name: `Play from URL: ${truncatedUrl}`, 
+                name: `Play Yuna Archive: ${truncatedUrl}`, 
+                value: focusedValue 
+            }]);
+        } else if (/^https?:\/\//i.test(focusedValue.trim())) {
+            return interaction.respond([{ 
+                name: 'Unsupported URL (use direct search, Spotify playlist, or JioSaavn URL)', 
                 value: focusedValue 
             }]);
         }
@@ -89,9 +95,21 @@ module.exports = {
         await interaction.deferReply();
         const query = interaction.options.getString('search');
 
+        const queryValidation = validatePlayQuery(query);
+        if (!queryValidation.valid) {
+            const container = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`${emojis.error} ${queryValidation.message}`)
+                );
+            return interaction.editReply({
+                components: [container],
+                flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2
+            });
+        }
+
         let res;
         try {
-            res = await client.poru.resolve({ query, requester: interaction.user });
+            res = await resolveMusicQuery(client, query, interaction.user);
         } catch (e) {
             console.error('Poru resolve error:', e);
             const errMsg = String(e?.message || 'Unknown error').slice(0, 1500);
