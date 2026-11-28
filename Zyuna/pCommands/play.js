@@ -77,7 +77,7 @@ module.exports = {
 
         const isSpotifyPlaylist = /^https?:\/\/open\.spotify\.com\/playlist\/[a-zA-Z0-9]+/i.test(query.trim());
         if (isSpotifyPlaylist) {
-            if (!res || res.loadType !== 'PLAYLIST_LOADED' || !Array.isArray(res.tracks) || res.tracks.length === 0) {
+            if (!res || (res.loadType !== 'PLAYLIST_LOADED' && res.loadType !== 'playlist') || !Array.isArray(res.tracks) || res.tracks.length === 0) {
                 const container = new ContainerBuilder()
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`${emojis.error} No results found or invalid playlist.`)

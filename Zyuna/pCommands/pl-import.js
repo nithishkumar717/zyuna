@@ -134,7 +134,7 @@ async function _importFromSpotify(message, url) {
         requester: author,
     });
     
-    if (!res || res.loadType !== 'PLAYLIST_LOADED' || !res.tracks.length) {
+    if (!res || (res.loadType !== 'PLAYLIST_LOADED' && res.loadType !== 'playlist') || !res.tracks.length) {
         const container = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
