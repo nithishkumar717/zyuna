@@ -201,8 +201,9 @@ if (config.LAVALINK.HOSTS && config.LAVALINK.HOSTS.trim().length > 0) {
     }
 }
 
-printLoading('Music system (LavaLink)');
+const configuredNodes = [...nodes];
 
+printLoading('Music system (LavaLink)');
 
 let lavaLinkConnected;
 const lavaLinkPromise = new Promise((resolve) => {
@@ -217,6 +218,28 @@ client.poru = new Poru(client, nodes, {
     reconnectTimeout: 5000,
     reconnectTries: Infinity,
 });
+
+async function healLavalinkNodes() {
+    if (!client.poru || !client.poru.isActivated) return;
+    for (const nodeConfig of configuredNodes) {
+        const existingNode = client.poru.nodes.get(nodeConfig.name);
+        if (!existingNode) {
+            printInfo(`[Lavalink Healer] Re-registering node ${nodeConfig.name} into Poru...`);
+            try {
+                await client.poru.addNode(nodeConfig);
+            } catch (err) {
+                printError(`[Lavalink Healer] Failed to add node ${nodeConfig.name}: ${err.message}`);
+            }
+        } else if (!existingNode.isConnected) {
+            printInfo(`[Lavalink Healer] Reconnecting node ${nodeConfig.name}...`);
+            try {
+                existingNode.reconnect();
+            } catch (_) {
+                try { existingNode.connect(); } catch (_) {}
+            }
+        }
+    }
+}
 
 client.poru.on('nodeConnect', (node) => {
     printSuccess(`LavaLink node connected: ${node.name}`);
@@ -233,30 +256,18 @@ client.poru.on('nodeReconnect', (node) => {
 client.poru.on('nodeDisconnect', (node) => {
     printError(`LavaLink node disconnected: ${node.name}`);
     setTimeout(() => {
-        try {
-            if (!node.isConnected) node.reconnect();
-        } catch (_) {}
-    }, 5000);
+        healLavalinkNodes().catch(() => {});
+    }, 2000);
 });
 
 client.poru.on('nodeError', (node, error) => {
     printError(`LavaLink node error (${node.name}): ${error.message}`);
 });
 
-// Resilient Lavalink Watchdog: Auto-reconnect if all nodes are disconnected
+// Resilient Lavalink Watchdog: Auto-re-adds or reconnects any dropped nodes
 setInterval(() => {
-    if (!client.poru || !client.poru.nodes) return;
-    for (const [, node] of client.poru.nodes) {
-        if (!node.isConnected) {
-            printInfo(`[Lavalink Watchdog] Healing disconnected node ${node.name}...`);
-            try {
-                node.reconnect();
-            } catch (e) {
-                try { node.connect(); } catch (_) {}
-            }
-        }
-    }
-}, 15000);
+    healLavalinkNodes().catch(() => {});
+}, 10000);
 
 
 client.poru.on('playerCreate', (player) => {
