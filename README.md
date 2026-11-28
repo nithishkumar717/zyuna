@@ -1,4 +1,4 @@
-# AeroX CV2 Music Bot
+# Zyuna Music Bot
 
 A modern Discord music bot built with Components V2, designed for reliable playback, queue management, playlists, and music controls.
 
@@ -61,7 +61,7 @@ This bot supports:
 
 ## LavaLink
 
-AeroX Music requires a LavaLink server to stream audio.
+Zyuna Music requires a LavaLink server to stream audio.
 
 Options:
 
@@ -114,16 +114,14 @@ For self-hosting, download Lavalink from the official releases page and configur
 ## Project structure
 
 ```text
-AeroX-CV2-Music-Bot/
-├── commands/
-├── pCommands/
-├── music/
-├── helpers/
-├── utils/
+Zyuna-CV2-Music-Bot/
+├── Zyuna/
+│   ├── commands/
+│   ├── pCommands/
+│   ├── music/
+│   ├── helpers/
+│   └── utils/
 ├── database/
-├── assets/
-├── config.js
-├── index.js
 ├── .env.example
 ├── package.json
 ├── README.md
