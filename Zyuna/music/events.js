@@ -1,7 +1,9 @@
 const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, SeparatorBuilder, SeparatorSpacingSize, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ComponentType, AttachmentBuilder } = require('discord.js');
 const { hexToDecimal } = require('../helpers/colorHelper');
 const { MusicCard } = require('../helpers/MusicCard');
+const { normalizeTitle, resolveAutoplayTracks } = require('../helpers/autoplayEngine');
 const Favorite = require('../../database/models/Favorite');
+const AutoplaySetting = require('../../database/models/AutoplaySetting');
 const config = require('../config');
 const emojis = require('../emojis.json');
 
@@ -14,12 +16,28 @@ function setupMusicEvents(client) {
         if (!channel) return;
 
         player._lastPlayedTrack = track;
+
+        if (!player._autoplayLoaded) {
+            player._autoplayLoaded = true;
+            try {
+                const setting = await AutoplaySetting.getGuildSetting(player.guildId);
+                player.autoplayEnabled = setting.enabled;
+                player.autoplayLanguage = setting.language;
+            } catch {
+                if (player.autoplayEnabled === undefined) player.autoplayEnabled = false;
+                if (!player.autoplayLanguage) player.autoplayLanguage = 'auto';
+            }
+        }
         
         if (!player._autoplayHistory) {
             player._autoplayHistory = new Set();
         }
         if (track.info?.identifier) {
-            player._autoplayHistory.add(track.info.identifier);
+            player._autoplayHistory.add(`id:${track.info.identifier}`);
+        }
+        if (track.info?.title) {
+            const norm = normalizeTitle(track.info.title);
+            if (norm) player._autoplayHistory.add(`title:${norm}`);
         }
 
         if (player.nowPlayingMessage && player.nowPlayingMessage.deletable) {
@@ -262,9 +280,19 @@ function setupMusicEvents(client) {
                             break;
                         }
                         case 'music_autoplay': {
-                            player.autoplayEnabled = !player.autoplayEnabled;
+                            const nextState = !player.autoplayEnabled;
+                            player.autoplayEnabled = nextState;
+                            player._autoplayLoaded = true;
+                            const saved = await AutoplaySetting.setGuildSetting(player.guildId, { enabled: nextState });
+                            player.autoplayLanguage = saved.language;
+                            const langLabel = saved.language.charAt(0).toUpperCase() + saved.language.slice(1);
                             const container = new ContainerBuilder()
-                                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${emojis.autoplay} Autoplay ${player.autoplayEnabled ? 'enabled' : 'disabled'}.`));
+                                .addTextDisplayComponents(
+                                    new TextDisplayBuilder().setContent(
+                                        `${emojis.autoplay} Autoplay **${player.autoplayEnabled ? 'enabled' : 'disabled'}** (` +
+                                        `Language: \`${langLabel}\`).`
+                                    )
+                                );
                             await interaction.reply({ 
                                 components: [container], 
                                 flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2, 
@@ -626,81 +654,15 @@ function setupMusicEvents(client) {
             const channel = client.channels.cache.get(player.textChannel);
             if (!channel) return;
 
-            const trackTitle = lastTrack.info.title || '';
-            const trackArtist = lastTrack.info.author || '';
-            const trackUri = lastTrack.info.uri || '';
-            
-            let resolve;
-            
-            if (trackUri && trackUri.includes('youtube.com')) {
-                resolve = await client.poru.resolve({ 
-                    query: `https://music.youtube.com/watch?v=${lastTrack.info.identifier}&list=RD${lastTrack.info.identifier}`,
-                    source: 'ytmsearch',
-                    requester: lastTrack.info.requester 
-                });
-            }
-            
-            if (!resolve || !resolve.tracks || resolve.tracks.length === 0) {
-                const searchQuery = `${trackTitle} ${trackArtist}`.trim();
-                resolve = await client.poru.resolve({ 
-                    query: searchQuery,
-                    source: 'ytmsearch',
-                    requester: lastTrack.info.requester 
-                });
-            }
-            
-            if (!resolve || !resolve.tracks || resolve.tracks.length === 0) {
-                const container = new ContainerBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`${emojis.autoplay} Autoplay couldn't find related tracks. Use \`/play\` to add more songs!`)
-                    );
-                await channel.send({ 
-                    components: [container], 
-                    flags: MessageFlags.IsPersistent | MessageFlags.IsComponentsV2 
-                }).catch(() => {});
-                return;
-            }
+            const setting = await AutoplaySetting.getGuildSetting(player.guildId);
+            const preferredLang = player.autoplayLanguage || setting.language || 'auto';
+            const result = await resolveAutoplayTracks(client, player, lastTrack, preferredLang, 4);
+            const addedTracks = result.tracks || [];
 
-            const maxAutoplayTracks = 6;
-            const addedTracks = [];
-            const seenTracks = new Set();
-            
-            const normalizeTitle = (title) => {
-                return title.toLowerCase()
-                    .replace(/\s*\(.*?\)\s*/g, '')
-                    .replace(/\s*\[.*?\]\s*/g, '')
-                    .replace(/[^\w\s]/g, '')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-            };
-            
-            const lastTrackNormalized = normalizeTitle(trackTitle);
-            seenTracks.add(lastTrackNormalized);
-            
-            if (!player._autoplayHistory) {
-                player._autoplayHistory = new Set();
-            }
-            
-            for (const track of resolve.tracks) {
-                if (addedTracks.length >= maxAutoplayTracks) break;
-                
-                const currentTitle = normalizeTitle(track.info?.title || '');
-                const trackId = track.info?.identifier;
-                
-                if (trackId && player._autoplayHistory.has(trackId)) {
-                    continue;
-                }
-                
-                if (!seenTracks.has(currentTitle) && currentTitle && track.info?.author) {
-                    addedTracks.push(track);
-                    seenTracks.add(currentTitle);
-                }
-            }
-            
             if (addedTracks.length === 0) {
                 const container = new ContainerBuilder()
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`${emojis.autoplay} Autoplay found only duplicates. Use \`/play\` to add more songs!`)
+                        new TextDisplayBuilder().setContent(`${emojis.autoplay} Autoplay couldn't find new trending tracks. Use \`/play\` to add more songs!`)
                     );
                 await channel.send({ 
                     components: [container], 
@@ -712,12 +674,15 @@ function setupMusicEvents(client) {
             for (const track of addedTracks) {
                 player.queue.add(track);
             }
-            
+
+            const langLabel = result.language.charAt(0).toUpperCase() + result.language.slice(1);
+            const trackTitle = lastTrack.info.title || 'Unknown Track';
+
             const container = new ContainerBuilder()
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `${emojis.autoplay} **Autoplay Active**\n\n` +
-                        `Added ${addedTracks.length} similar track${addedTracks.length > 1 ? 's' : ''} to queue\n` +
+                        `Added **${addedTracks.length}** latest trending ${langLabel} track${addedTracks.length > 1 ? 's' : ''} to queue\n` +
                         `Based on: **${trackTitle}**`
                     )
                 );

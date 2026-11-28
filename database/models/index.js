@@ -5,6 +5,7 @@ const Favorite = require('./Favorite');
 const Playlist = require('./Playlist');
 const PlaylistTrack = require('./PlaylistTrack');
 const NoPrefix = require('./NoPrefix');
+const AutoplaySetting = require('./AutoplaySetting');
 
 
 const models = {
@@ -12,6 +13,7 @@ const models = {
     Playlist,
     PlaylistTrack,
     NoPrefix,
+    AutoplaySetting,
     sequelize
 };
 
