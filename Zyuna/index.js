@@ -214,11 +214,12 @@ client.poru = new Poru(client, nodes, {
     defaultPlatform: config.MUSIC.DEFAULT_PLATFORM,
     resumeKey: 'ZyunaMusicBot',
     resumeTimeout: 60,
-    reconnectTimeout: 10000,
-    reconnectTries: 5,
+    reconnectTimeout: 5000,
+    reconnectTries: Infinity,
 });
 
 client.poru.on('nodeConnect', (node) => {
+    printSuccess(`LavaLink node connected: ${node.name}`);
     if (lavaLinkConnected) {
         lavaLinkConnected(node);
         lavaLinkConnected = null; 
@@ -231,11 +232,31 @@ client.poru.on('nodeReconnect', (node) => {
 
 client.poru.on('nodeDisconnect', (node) => {
     printError(`LavaLink node disconnected: ${node.name}`);
+    setTimeout(() => {
+        try {
+            if (!node.isConnected) node.reconnect();
+        } catch (_) {}
+    }, 5000);
 });
 
 client.poru.on('nodeError', (node, error) => {
     printError(`LavaLink node error (${node.name}): ${error.message}`);
 });
+
+// Resilient Lavalink Watchdog: Auto-reconnect if all nodes are disconnected
+setInterval(() => {
+    if (!client.poru || !client.poru.nodes) return;
+    for (const [, node] of client.poru.nodes) {
+        if (!node.isConnected) {
+            printInfo(`[Lavalink Watchdog] Healing disconnected node ${node.name}...`);
+            try {
+                node.reconnect();
+            } catch (e) {
+                try { node.connect(); } catch (_) {}
+            }
+        }
+    }
+}, 15000);
 
 
 client.poru.on('playerCreate', (player) => {
