@@ -88,7 +88,7 @@ module.exports = {
           .setStyle(ButtonStyle.Link),
 
         new ButtonBuilder()
-          .setURL(`https://discord.gg/zyuna-development`)
+          .setURL(`https://discord.gg/YzHCx5yQXv`)
           .setLabel(`Zyuna Development`)
           .setStyle(ButtonStyle.Link)
       )

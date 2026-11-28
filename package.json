@@ -13,6 +13,14 @@
   "author": "Nithish (Nerdxlive)",
   "license": "ISC",
   "description": "Zyuna Music Bot with LavaLink",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nithishkumar717/zyuna.git"
+  },
+  "homepage": "https://github.com/nithishkumar717/zyuna#readme",
+  "bugs": {
+    "url": "https://github.com/nithishkumar717/zyuna/issues"
+  },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",
     "axios": "^1.11.0",

@@ -79,7 +79,7 @@ module.exports = {
             .addActionRowComponents(rows[2])
             .addSeparatorComponents(new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(true))
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`Powered by Zyuna Development `)
+                new TextDisplayBuilder().setContent(`Powered by Zyuna Development`)
             );
 
         const filterMsg = await message.reply({

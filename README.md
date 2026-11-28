@@ -29,8 +29,8 @@ This bot supports:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/itsfizys/AeroX-CV2-Music-Bot.git
-   cd AeroX-CV2-Music-Bot
+   git clone https://github.com/nithishkumar717/zyuna.git
+   cd zyuna
    ```
 
 2. Install dependencies:
@@ -143,10 +143,9 @@ Contributions are welcome. To contribute:
 
 ## Support
 
-- Discord: `itsfizys`
-- Portfolio: https://itsfiizys.com
-- Community server: https://discord.gg/8wfT8SfB5Z
-
+- Author: `Nithish (Nerdxlive)`
+- GitHub: https://github.com/nithishkumar717/zyuna
+- Support Server: https://discord.gg/YzHCx5yQXv
 ## License
 
 This project is licensed under the ISC License.
