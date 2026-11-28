@@ -8,10 +8,10 @@ module.exports = {
 
 
     LAVALINK: {
-        HOSTS: process.env.LAVALINK_HOSTS || '',
-        PORTS: process.env.LAVALINK_PORTS || '',
-        PASSWORDS: process.env.LAVALINK_PASSWORDS || '',
-        SECURES: process.env.LAVALINK_SECURES || ''
+        HOSTS: process.env.LAVALINK_HOSTS || 'lavalink.yunabot.xyz',
+        PORTS: process.env.LAVALINK_PORTS || '26245',
+        PASSWORDS: process.env.LAVALINK_PASSWORDS || 'nerdxlive',
+        SECURES: process.env.LAVALINK_SECURES || 'false'
     },
 
 

@@ -185,7 +185,7 @@ printSuccess('Database initialized');
 const nodes = [];
 if (config.LAVALINK.HOSTS && config.LAVALINK.HOSTS.trim().length > 0) {
     const hosts = config.LAVALINK.HOSTS.split(',');
-    const ports = (config.LAVALINK.PORTS || '24622').split(',');
+    const ports = (config.LAVALINK.PORTS || '26245').split(',');
     const passwords = (config.LAVALINK.PASSWORDS || 'nerdxlive').split(',');
     const secures = (config.LAVALINK.SECURES || 'false').split(',');
 
@@ -194,7 +194,7 @@ if (config.LAVALINK.HOSTS && config.LAVALINK.HOSTS.trim().length > 0) {
         nodes.push({
             name: `Node-${i + 1}`,
             host: hosts[i].trim(),
-            port: parseInt(ports[i] ? ports[i].trim() : '24622') || 24622,
+            port: parseInt(ports[i] ? ports[i].trim() : '26245') || 26245,
             password: passwords[i] ? passwords[i].trim() : 'nerdxlive',
             secure: secures[i] ? secures[i].trim() === 'true' : false
         });
