@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const axios = require('axios');
 const { REST, Routes } = require('discord.js');
 const emojis = require('../emojis.json');
@@ -7,6 +8,24 @@ const emojis = require('../emojis.json');
 const EMOJI_MENTION = /^<(?<animated>a?):(?<name>[A-Za-z0-9_]+):(?<id>\d+)>$/;
 const MAX_EMOJI_SIZE = 256 * 1024;
 const emojiDirectory = path.join(__dirname, '..', 'assets', 'emojis');
+const syncCachePath = path.join(__dirname, '..', '..', 'database', '.emoji-sync-cache.json');
+
+function loadSyncCache() {
+    try {
+        return JSON.parse(fs.readFileSync(syncCachePath, 'utf8'));
+    } catch {
+        return {};
+    }
+}
+
+function saveSyncCache(cache) {
+    try {
+        fs.mkdirSync(path.dirname(syncCachePath), { recursive: true });
+        fs.writeFileSync(syncCachePath, JSON.stringify(cache, null, 2));
+    } catch {
+        // Non-fatal if cache cannot be written
+    }
+}
 
 function getApplicationEmojiName(name) {
     const normalized = name.toLowerCase();
@@ -110,13 +129,21 @@ async function syncApplicationEmojis(applicationId, token) {
     const applicationEmojis = new Map(
         response.items.map(emoji => [emoji.name.toLowerCase(), emoji])
     );
+    const applicationEmojisById = new Map(
+        response.items.map(emoji => [emoji.id, emoji])
+    );
+    const syncCache = loadSyncCache();
     const uploadedBySourceId = new Map();
     let created = 0;
     let renamed = 0;
+    let replaced = 0;
 
     for (const entry of manifest) {
         const targetName = getApplicationEmojiName(entry.name);
-        let applicationEmoji = applicationEmojis.get(targetName.toLowerCase());
+        const asset = assets.get(entry.id);
+        const assetHash = crypto.createHash('sha256').update(asset.image).digest('hex');
+
+        let applicationEmoji = applicationEmojisById.get(entry.id) || applicationEmojis.get(targetName.toLowerCase());
         const oldEmoji = applicationEmojis.get(entry.name.toLowerCase());
 
         if (!applicationEmoji && oldEmoji && oldEmoji.name !== targetName) {
@@ -129,9 +156,28 @@ async function syncApplicationEmojis(applicationId, token) {
             renamed++;
         }
 
+        // Replace existing application emoji if its source asset/ID changed
+        const cached = syncCache[targetName.toLowerCase()];
+        const cacheChanged = cached && (cached.sourceId !== entry.id || cached.hash !== assetHash);
+        const newerSnowflakeReplacement =
+            applicationEmoji &&
+            applicationEmoji.id !== entry.id &&
+            targetName.toLowerCase() === 'white_next' &&
+            BigInt(applicationEmoji.id) < BigInt(entry.id);
+
+        if (applicationEmoji && (cacheChanged || newerSnowflakeReplacement)) {
+            try {
+                await rest.delete(Routes.applicationEmoji(applicationId, applicationEmoji.id));
+                applicationEmojis.delete(applicationEmoji.name.toLowerCase());
+                applicationEmojisById.delete(applicationEmoji.id);
+                applicationEmoji = null;
+                replaced++;
+            } catch {
+                // Keep existing if delete fails
+            }
+        }
+
         if (!applicationEmoji) {
-            const asset = assets.get(entry.id);
-            const extension = entry.animated ? 'gif' : 'png';
             const mimeType = entry.animated ? 'image/gif' : 'image/png';
             const image = `data:${mimeType};base64,${asset.image.toString('base64')}`;
 
@@ -140,11 +186,19 @@ async function syncApplicationEmojis(applicationId, token) {
                 { body: { name: targetName, image } }
             );
             applicationEmojis.set(targetName.toLowerCase(), applicationEmoji);
+            applicationEmojisById.set(applicationEmoji.id, applicationEmoji);
             created++;
         }
 
+        syncCache[targetName.toLowerCase()] = {
+            sourceId: entry.id,
+            appEmojiId: applicationEmoji.id,
+            hash: assetHash
+        };
         uploadedBySourceId.set(entry.id, applicationEmoji);
     }
+
+    saveSyncCache(syncCache);
 
     for (const [key, mention] of Object.entries(emojis)) {
         const match = EMOJI_MENTION.exec(mention);
@@ -157,7 +211,8 @@ async function syncApplicationEmojis(applicationId, token) {
         total: manifest.length,
         downloaded,
         created,
-        renamed
+        renamed,
+        replaced
     };
 }
 

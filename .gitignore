@@ -10,6 +10,7 @@ node_modules/
 database/*.db
 database/*.db-*
 database/*.sqlite*
+database/.emoji-sync-cache.json
 *.log
 npm-debug.log*
 
