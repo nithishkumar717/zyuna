@@ -51,9 +51,10 @@ module.exports = {
             res = await client.poru.resolve({ query, requester: message.author });
         } catch (e) {
             console.error('Poru resolve error:', e);
+            const errMsg = String(e?.message || 'Unknown error').slice(0, 1500);
             const container = new ContainerBuilder()
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`${emojis.error} Failed to search: ${e?.message || 'Unknown error'}`)
+                    new TextDisplayBuilder().setContent(`${emojis.error} Failed to search: ${errMsg}`)
                 );
             return loadingMsg.edit({ 
                 components: [container], 

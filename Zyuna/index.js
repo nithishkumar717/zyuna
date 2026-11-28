@@ -1,5 +1,7 @@
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const { Poru } = require('poru');
+const { patchPoruRest } = require('./utils/patchPoru');
+patchPoruRest();
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });

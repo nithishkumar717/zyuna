@@ -94,9 +94,10 @@ module.exports = {
             res = await client.poru.resolve({ query, requester: interaction.user });
         } catch (e) {
             console.error('Poru resolve error:', e);
+            const errMsg = String(e?.message || 'Unknown error').slice(0, 1500);
             const container = new ContainerBuilder()
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`${emojis.error} Failed to search: ${e?.message || 'Unknown error'}`)
+                    new TextDisplayBuilder().setContent(`${emojis.error} Failed to search: ${errMsg}`)
                 );
             return interaction.editReply({ 
                 components: [container], 
